@@ -22,7 +22,7 @@ fn main() {
         .filter_level(log_level)
         .init();
 
-    debug!("Starting render_sandbox with arguments: {:?}", args);
+    debug!("Starting render_sandbox with arguments: {args:?}");
 
     if args.verbose {
         info!("Starting render_sandbox with configuration:");
