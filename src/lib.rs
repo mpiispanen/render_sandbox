@@ -29,4 +29,8 @@ pub struct Args {
     /// Verbose output
     #[arg(short = 'v', long = "verbose")]
     pub verbose: bool,
+
+    /// Log level (error, warn, info, debug, trace)
+    #[arg(short = 'l', long = "log-level", default_value = "info")]
+    pub log_level: String,
 }
