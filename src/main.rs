@@ -39,5 +39,3 @@ fn main() {
     // TODO: Implement actual rendering logic here
     println!("Rendering complete!");
 }
-
-
