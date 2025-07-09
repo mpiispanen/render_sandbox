@@ -1,0 +1,15 @@
+[package]
+name = "render_sandbox"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "render_sandbox"
+path = "src/lib.rs"
+
+[[bin]]
+name = "render_sandbox"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
