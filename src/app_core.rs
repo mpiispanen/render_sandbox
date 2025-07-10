@@ -185,4 +185,19 @@ impl Application {
         // Return the last rendered frame data
         Ok(self.engine.get_rendered_frame_data())
     }
+
+    /// Returns whether the application is in headless mode
+    pub fn is_headless(&self) -> bool {
+        self.is_headless
+    }
+
+    /// Returns whether the application has a window
+    pub fn has_window(&self) -> bool {
+        self.window.is_some()
+    }
+
+    /// Returns whether the application has an event loop
+    pub fn has_event_loop(&self) -> bool {
+        self.event_loop.is_some()
+    }
 }
