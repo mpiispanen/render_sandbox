@@ -3,10 +3,10 @@ use clap::Parser;
 pub mod app_core;
 pub mod engine;
 pub mod graphics_api;
-pub mod resource_manager;
 pub mod render_graph;
-pub mod scene;
 pub mod renderer;
+pub mod resource_manager;
+pub mod scene;
 
 /// A graphics rendering application
 #[derive(Parser, Debug)]

@@ -1,5 +1,5 @@
 use crate::resource_manager::Handle;
-use cgmath::{Matrix4, Point3, Quaternion, Vector3, EuclideanSpace};
+use cgmath::{EuclideanSpace, Matrix4, Point3, Quaternion, Vector3};
 use std::collections::HashMap;
 
 /// Unique identifier for scene nodes
@@ -55,7 +55,7 @@ impl Transform {
         let translation = Matrix4::from_translation(self.position);
         let rotation = Matrix4::from(self.rotation);
         let scale = Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, self.scale.z);
-        
+
         translation * rotation * scale
     }
 }
@@ -120,7 +120,12 @@ impl Camera {
 
     /// Get the projection matrix
     pub fn projection_matrix(&self) -> Matrix4<f32> {
-        cgmath::perspective(cgmath::Deg(self.fov), self.aspect_ratio, self.near, self.far)
+        cgmath::perspective(
+            cgmath::Deg(self.fov),
+            self.aspect_ratio,
+            self.near,
+            self.far,
+        )
     }
 
     /// Get the view matrix based on transform
@@ -129,7 +134,7 @@ impl Camera {
         let forward = transform.rotation * Vector3::new(0.0, 0.0, -1.0);
         let up = transform.rotation * Vector3::new(0.0, 1.0, 0.0);
         let target = eye + forward;
-        
+
         cgmath::Matrix4::look_at_rh(eye, target, up)
     }
 }
@@ -231,11 +236,15 @@ impl Scene {
     /// Add a node to the scene
     pub fn add_node(&mut self, node: SceneNode) -> NodeId {
         let node_id = node.id;
-        log::debug!("Adding node to scene: {:?} ({})", node_id, node.name.as_deref().unwrap_or("unnamed"));
-        
+        log::debug!(
+            "Adding node to scene: {:?} ({})",
+            node_id,
+            node.name.as_deref().unwrap_or("unnamed")
+        );
+
         self.nodes.insert(node_id, node);
         self.root_nodes.push(node_id);
-        
+
         node_id
     }
 
@@ -243,18 +252,18 @@ impl Scene {
     pub fn add_child_node(&mut self, parent_id: NodeId, mut child: SceneNode) -> Option<NodeId> {
         let child_id = child.id;
         child.parent = Some(parent_id);
-        
+
         if let Some(parent) = self.nodes.get_mut(&parent_id) {
             parent.children.push(child_id);
             self.nodes.insert(child_id, child);
-            
+
             // Remove from root nodes if it was there
             self.root_nodes.retain(|&id| id != child_id);
-            
-            log::debug!("Added child node {:?} to parent {:?}", child_id, parent_id);
+
+            log::debug!("Added child node {child_id:?} to parent {parent_id:?}");
             Some(child_id)
         } else {
-            log::warn!("Failed to add child node: parent {:?} not found", parent_id);
+            log::warn!("Failed to add child node: parent {parent_id:?} not found");
             None
         }
     }
@@ -275,7 +284,7 @@ impl Scene {
             // Collect children before removing the node
             let children: Vec<NodeId> = node.children.clone();
             let parent_id = node.parent;
-            
+
             // Remove from parent's children list
             if let Some(parent_id) = parent_id {
                 if let Some(parent) = self.nodes.get_mut(&parent_id) {
@@ -285,21 +294,21 @@ impl Scene {
                 // Remove from root nodes
                 self.root_nodes.retain(|&id| id != node_id);
             }
-            
+
             // Remove the node
             self.nodes.remove(&node_id);
-            
+
             // Recursively remove children
             for child_id in children {
                 self.remove_node(child_id);
             }
-            
+
             // Clear main camera if it was removed
             if self.main_camera == Some(node_id) {
                 self.main_camera = None;
             }
-            
-            log::debug!("Removed node {:?} from scene", node_id);
+
+            log::debug!("Removed node {node_id:?} from scene");
             true
         } else {
             false
@@ -311,14 +320,14 @@ impl Scene {
         if let Some(node) = self.nodes.get(&camera_id) {
             if matches!(node.content, Some(NodeContent::Camera(_))) {
                 self.main_camera = Some(camera_id);
-                log::debug!("Set main camera to node {:?}", camera_id);
+                log::debug!("Set main camera to node {camera_id:?}");
                 true
             } else {
-                log::warn!("Node {:?} is not a camera", camera_id);
+                log::warn!("Node {camera_id:?} is not a camera");
                 false
             }
         } else {
-            log::warn!("Camera node {:?} not found", camera_id);
+            log::warn!("Camera node {camera_id:?} not found");
             false
         }
     }
@@ -332,9 +341,7 @@ impl Scene {
     pub fn get_mesh_nodes(&self) -> Vec<&SceneNode> {
         self.nodes
             .values()
-            .filter(|node| {
-                node.visible && matches!(node.content, Some(NodeContent::Mesh(_)))
-            })
+            .filter(|node| node.visible && matches!(node.content, Some(NodeContent::Mesh(_))))
             .collect()
     }
 
@@ -342,9 +349,7 @@ impl Scene {
     pub fn get_light_nodes(&self) -> Vec<&SceneNode> {
         self.nodes
             .values()
-            .filter(|node| {
-                node.visible && matches!(node.content, Some(NodeContent::Light(_)))
-            })
+            .filter(|node| node.visible && matches!(node.content, Some(NodeContent::Light(_))))
             .collect()
     }
 
@@ -391,7 +396,7 @@ impl Scene {
         F: FnMut(&SceneNode),
     {
         visitor(node);
-        
+
         for &child_id in &node.children {
             if let Some(child) = self.get_node(child_id) {
                 self.traverse_node_depth_first(child, visitor);

@@ -57,8 +57,8 @@ pub enum ResourceError {
 impl std::fmt::Display for ResourceError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ResourceError::ResourceNotFound(id) => write!(f, "Resource not found: {:?}", id),
-            ResourceError::TypeMismatch(id) => write!(f, "Resource type mismatch for: {:?}", id),
+            ResourceError::ResourceNotFound(id) => write!(f, "Resource not found: {id:?}"),
+            ResourceError::TypeMismatch(id) => write!(f, "Resource type mismatch for: {id:?}"),
             ResourceError::CreationFailed(msg) => write!(f, "Resource creation failed: {msg}"),
         }
     }
@@ -81,98 +81,133 @@ impl ResourceManager {
     }
 
     /// Create a buffer resource
-    pub fn create_buffer(&mut self, device: &wgpu::Device, desc: &wgpu::BufferDescriptor) -> Handle<wgpu::Buffer> {
+    pub fn create_buffer(
+        &mut self,
+        device: &wgpu::Device,
+        desc: &wgpu::BufferDescriptor,
+    ) -> Handle<wgpu::Buffer> {
         let buffer = device.create_buffer(desc);
         let handle_id = next_handle_id();
         let handle = Handle::new(handle_id);
-        
-        log::debug!("Created buffer handle: {:?}", handle_id);
+
+        log::debug!("Created buffer handle: {handle_id:?}");
         self.resources.insert(handle_id, Resource::Buffer(buffer));
-        
+
         handle
     }
 
     /// Create a buffer with initial data
-    pub fn create_buffer_init(&mut self, device: &wgpu::Device, desc: &wgpu::util::BufferInitDescriptor) -> Handle<wgpu::Buffer> {
+    pub fn create_buffer_init(
+        &mut self,
+        device: &wgpu::Device,
+        desc: &wgpu::util::BufferInitDescriptor,
+    ) -> Handle<wgpu::Buffer> {
         let buffer = device.create_buffer_init(desc);
         let handle_id = next_handle_id();
         let handle = Handle::new(handle_id);
-        
-        log::debug!("Created buffer with data handle: {:?}", handle_id);
+
+        log::debug!("Created buffer with data handle: {handle_id:?}");
         self.resources.insert(handle_id, Resource::Buffer(buffer));
-        
+
         handle
     }
 
     /// Create a texture resource
-    pub fn create_texture(&mut self, device: &wgpu::Device, desc: &wgpu::TextureDescriptor) -> Handle<wgpu::Texture> {
+    pub fn create_texture(
+        &mut self,
+        device: &wgpu::Device,
+        desc: &wgpu::TextureDescriptor,
+    ) -> Handle<wgpu::Texture> {
         let texture = device.create_texture(desc);
         let handle_id = next_handle_id();
         let handle = Handle::new(handle_id);
-        
-        log::debug!("Created texture handle: {:?}", handle_id);
+
+        log::debug!("Created texture handle: {handle_id:?}");
         self.resources.insert(handle_id, Resource::Texture(texture));
-        
+
         handle
     }
 
     /// Create a shader module
-    pub fn create_shader(&mut self, device: &wgpu::Device, desc: wgpu::ShaderModuleDescriptor) -> Handle<wgpu::ShaderModule> {
+    pub fn create_shader(
+        &mut self,
+        device: &wgpu::Device,
+        desc: wgpu::ShaderModuleDescriptor,
+    ) -> Handle<wgpu::ShaderModule> {
         let shader = device.create_shader_module(desc);
         let handle_id = next_handle_id();
         let handle = Handle::new(handle_id);
-        
-        log::debug!("Created shader handle: {:?}", handle_id);
+
+        log::debug!("Created shader handle: {handle_id:?}");
         self.resources.insert(handle_id, Resource::Shader(shader));
-        
+
         handle
     }
 
     /// Create a render pipeline
-    pub fn create_render_pipeline(&mut self, device: &wgpu::Device, desc: &wgpu::RenderPipelineDescriptor) -> Handle<wgpu::RenderPipeline> {
+    pub fn create_render_pipeline(
+        &mut self,
+        device: &wgpu::Device,
+        desc: &wgpu::RenderPipelineDescriptor,
+    ) -> Handle<wgpu::RenderPipeline> {
         let pipeline = device.create_render_pipeline(desc);
         let handle_id = next_handle_id();
         let handle = Handle::new(handle_id);
-        
-        log::debug!("Created render pipeline handle: {:?}", handle_id);
-        self.resources.insert(handle_id, Resource::RenderPipeline(pipeline));
-        
+
+        log::debug!("Created render pipeline handle: {handle_id:?}");
+        self.resources
+            .insert(handle_id, Resource::RenderPipeline(pipeline));
+
         handle
     }
 
     /// Create a bind group layout
-    pub fn create_bind_group_layout(&mut self, device: &wgpu::Device, desc: &wgpu::BindGroupLayoutDescriptor) -> Handle<wgpu::BindGroupLayout> {
+    pub fn create_bind_group_layout(
+        &mut self,
+        device: &wgpu::Device,
+        desc: &wgpu::BindGroupLayoutDescriptor,
+    ) -> Handle<wgpu::BindGroupLayout> {
         let layout = device.create_bind_group_layout(desc);
         let handle_id = next_handle_id();
         let handle = Handle::new(handle_id);
-        
-        log::debug!("Created bind group layout handle: {:?}", handle_id);
-        self.resources.insert(handle_id, Resource::BindGroupLayout(layout));
-        
+
+        log::debug!("Created bind group layout handle: {handle_id:?}");
+        self.resources
+            .insert(handle_id, Resource::BindGroupLayout(layout));
+
         handle
     }
 
     /// Create a bind group
-    pub fn create_bind_group(&mut self, device: &wgpu::Device, desc: &wgpu::BindGroupDescriptor) -> Handle<wgpu::BindGroup> {
+    pub fn create_bind_group(
+        &mut self,
+        device: &wgpu::Device,
+        desc: &wgpu::BindGroupDescriptor,
+    ) -> Handle<wgpu::BindGroup> {
         let bind_group = device.create_bind_group(desc);
         let handle_id = next_handle_id();
         let handle = Handle::new(handle_id);
-        
-        log::debug!("Created bind group handle: {:?}", handle_id);
-        self.resources.insert(handle_id, Resource::BindGroup(bind_group));
-        
+
+        log::debug!("Created bind group handle: {handle_id:?}");
+        self.resources
+            .insert(handle_id, Resource::BindGroup(bind_group));
+
         handle
     }
 
     /// Create a sampler
-    pub fn create_sampler(&mut self, device: &wgpu::Device, desc: &wgpu::SamplerDescriptor) -> Handle<wgpu::Sampler> {
+    pub fn create_sampler(
+        &mut self,
+        device: &wgpu::Device,
+        desc: &wgpu::SamplerDescriptor,
+    ) -> Handle<wgpu::Sampler> {
         let sampler = device.create_sampler(desc);
         let handle_id = next_handle_id();
         let handle = Handle::new(handle_id);
-        
-        log::debug!("Created sampler handle: {:?}", handle_id);
+
+        log::debug!("Created sampler handle: {handle_id:?}");
         self.resources.insert(handle_id, Resource::Sampler(sampler));
-        
+
         handle
     }
 
@@ -186,7 +221,10 @@ impl ResourceManager {
     }
 
     /// Get a texture by handle
-    pub fn get_texture(&self, handle: Handle<wgpu::Texture>) -> Result<&wgpu::Texture, ResourceError> {
+    pub fn get_texture(
+        &self,
+        handle: Handle<wgpu::Texture>,
+    ) -> Result<&wgpu::Texture, ResourceError> {
         match self.resources.get(&handle.id()) {
             Some(Resource::Texture(texture)) => Ok(texture),
             Some(_) => Err(ResourceError::TypeMismatch(handle.id())),
@@ -195,7 +233,10 @@ impl ResourceManager {
     }
 
     /// Get a shader by handle
-    pub fn get_shader(&self, handle: Handle<wgpu::ShaderModule>) -> Result<&wgpu::ShaderModule, ResourceError> {
+    pub fn get_shader(
+        &self,
+        handle: Handle<wgpu::ShaderModule>,
+    ) -> Result<&wgpu::ShaderModule, ResourceError> {
         match self.resources.get(&handle.id()) {
             Some(Resource::Shader(shader)) => Ok(shader),
             Some(_) => Err(ResourceError::TypeMismatch(handle.id())),
@@ -204,7 +245,10 @@ impl ResourceManager {
     }
 
     /// Get a render pipeline by handle
-    pub fn get_render_pipeline(&self, handle: Handle<wgpu::RenderPipeline>) -> Result<&wgpu::RenderPipeline, ResourceError> {
+    pub fn get_render_pipeline(
+        &self,
+        handle: Handle<wgpu::RenderPipeline>,
+    ) -> Result<&wgpu::RenderPipeline, ResourceError> {
         match self.resources.get(&handle.id()) {
             Some(Resource::RenderPipeline(pipeline)) => Ok(pipeline),
             Some(_) => Err(ResourceError::TypeMismatch(handle.id())),
@@ -213,7 +257,10 @@ impl ResourceManager {
     }
 
     /// Get a bind group layout by handle
-    pub fn get_bind_group_layout(&self, handle: Handle<wgpu::BindGroupLayout>) -> Result<&wgpu::BindGroupLayout, ResourceError> {
+    pub fn get_bind_group_layout(
+        &self,
+        handle: Handle<wgpu::BindGroupLayout>,
+    ) -> Result<&wgpu::BindGroupLayout, ResourceError> {
         match self.resources.get(&handle.id()) {
             Some(Resource::BindGroupLayout(layout)) => Ok(layout),
             Some(_) => Err(ResourceError::TypeMismatch(handle.id())),
@@ -222,7 +269,10 @@ impl ResourceManager {
     }
 
     /// Get a bind group by handle
-    pub fn get_bind_group(&self, handle: Handle<wgpu::BindGroup>) -> Result<&wgpu::BindGroup, ResourceError> {
+    pub fn get_bind_group(
+        &self,
+        handle: Handle<wgpu::BindGroup>,
+    ) -> Result<&wgpu::BindGroup, ResourceError> {
         match self.resources.get(&handle.id()) {
             Some(Resource::BindGroup(bind_group)) => Ok(bind_group),
             Some(_) => Err(ResourceError::TypeMismatch(handle.id())),
@@ -231,7 +281,10 @@ impl ResourceManager {
     }
 
     /// Get a sampler by handle
-    pub fn get_sampler(&self, handle: Handle<wgpu::Sampler>) -> Result<&wgpu::Sampler, ResourceError> {
+    pub fn get_sampler(
+        &self,
+        handle: Handle<wgpu::Sampler>,
+    ) -> Result<&wgpu::Sampler, ResourceError> {
         match self.resources.get(&handle.id()) {
             Some(Resource::Sampler(sampler)) => Ok(sampler),
             Some(_) => Err(ResourceError::TypeMismatch(handle.id())),

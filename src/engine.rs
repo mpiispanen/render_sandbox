@@ -1,7 +1,7 @@
-use winit::{dpi::PhysicalSize, event::WindowEvent, window::Window};
 use crate::graphics_api::{GraphicsApi, WgpuGraphicsApi};
 use crate::renderer::Renderer;
 use crate::scene::Scene;
+use winit::{dpi::PhysicalSize, event::WindowEvent, window::Window};
 
 /// Error types for engine operations
 #[derive(Debug)]
@@ -27,7 +27,9 @@ impl std::error::Error for EngineError {}
 /// Engine trait for rendering abstraction
 pub trait Engine: Send + 'static {
     /// Create a new engine instance
-    fn new(window_handle: Option<&Window>) -> impl std::future::Future<Output = Result<Self, EngineError>>
+    fn new(
+        window_handle: Option<&Window>,
+    ) -> impl std::future::Future<Output = Result<Self, EngineError>>
     where
         Self: Sized;
 
@@ -108,26 +110,32 @@ pub struct RealTimeEngine {
 
 impl RealTimeEngine {
     async fn new_impl(window_handle: Option<&Window>) -> Result<Self, EngineError> {
-        log::info!("Creating real-time engine (headless: {})", window_handle.is_none());
-        
+        log::info!(
+            "Creating real-time engine (headless: {})",
+            window_handle.is_none()
+        );
+
         // Initialize graphics API
-        let graphics_api = WgpuGraphicsApi::new(window_handle).await
-            .map_err(|e| EngineError::InitializationError(format!("Failed to create graphics API: {e}")))?;
-        
+        let graphics_api = WgpuGraphicsApi::new(window_handle).await.map_err(|e| {
+            EngineError::InitializationError(format!("Failed to create graphics API: {e}"))
+        })?;
+
         // Create renderer
         let mut renderer = Renderer::new(Box::new(graphics_api));
-        
+
         // Initialize renderer
-        renderer.initialize()
-            .map_err(|e| EngineError::InitializationError(format!("Failed to initialize renderer: {e}")))?;
-        
+        renderer.initialize().map_err(|e| {
+            EngineError::InitializationError(format!("Failed to initialize renderer: {e}"))
+        })?;
+
         // Create scene
         let mut scene = Scene::new();
-        
+
         // Add a test triangle for demonstration
-        renderer.create_test_triangle(&mut scene)
-            .map_err(|e| EngineError::InitializationError(format!("Failed to create test triangle: {e}")))?;
-        
+        renderer.create_test_triangle(&mut scene).map_err(|e| {
+            EngineError::InitializationError(format!("Failed to create test triangle: {e}"))
+        })?;
+
         Ok(RealTimeEngine {
             renderer,
             scene,
@@ -143,7 +151,11 @@ impl Engine for RealTimeEngine {
     }
 
     fn resize(&mut self, new_size: PhysicalSize<u32>) {
-        log::debug!("Real-time engine resize to {}x{}", new_size.width, new_size.height);
+        log::debug!(
+            "Real-time engine resize to {}x{}",
+            new_size.width,
+            new_size.height
+        );
         if let Err(e) = self.renderer.resize(new_size.width, new_size.height) {
             log::error!("Failed to resize renderer: {e}");
         }
@@ -156,14 +168,19 @@ impl Engine for RealTimeEngine {
     }
 
     fn render(&mut self) -> Result<(), EngineError> {
-        self.renderer.render(&self.scene)
+        self.renderer
+            .render(&self.scene)
             .map_err(|e| EngineError::RenderingError(format!("Render failed: {e}")))?;
-        
+
         if self.frame_count % 60 == 0 {
             let stats = self.renderer.get_stats();
-            log::debug!("Rendered {} frames, {} passes", stats.frame_count, stats.render_passes);
+            log::debug!(
+                "Rendered {} frames, {} passes",
+                stats.frame_count,
+                stats.render_passes
+            );
         }
-        
+
         Ok(())
     }
 

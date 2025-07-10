@@ -70,7 +70,7 @@ fn test_headless_run() {
     // Test running the application in headless mode
     if let Ok(app) = Application::new(true) {
         let result = app.run();
-        
+
         // In CI environments without graphics drivers, this is expected to fail
         // We just check that it fails gracefully
         match result {
@@ -81,9 +81,9 @@ fn test_headless_run() {
                 // Expected in environments without graphics adapters
                 println!("Headless application failed as expected in CI: {e}");
                 assert!(
-                    e.to_string().contains("graphics adapter") || 
-                    e.to_string().contains("graphics API") ||
-                    e.to_string().contains("InitializationError"),
+                    e.to_string().contains("graphics adapter")
+                        || e.to_string().contains("graphics API")
+                        || e.to_string().contains("InitializationError"),
                     "Unexpected error type: {e}"
                 );
             }

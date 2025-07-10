@@ -58,13 +58,13 @@ impl Application {
     /// Initialize the engine asynchronously
     async fn initialize_engine(&mut self) -> Result<(), EngineError> {
         info!("Initializing engine");
-        
+
         let engine = if self.is_headless {
             Box::new(RealTimeEngine::new(None).await?) as Box<dyn Engine>
         } else {
             Box::new(RealTimeEngine::new(self.window.as_ref()).await?) as Box<dyn Engine>
         };
-        
+
         self.engine = Some(engine);
         info!("Engine initialized successfully");
         Ok(())
@@ -75,7 +75,7 @@ impl Application {
     pub fn run(mut self) -> Result<(), EngineError> {
         // Initialize engine in a blocking way
         futures::executor::block_on(self.initialize_engine())?;
-        
+
         if self.is_headless {
             info!("Starting headless mode");
             let frame_data = self.run_headless(Some(10))?; // Render 10 frames by default

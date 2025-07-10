@@ -61,11 +61,17 @@ pub enum RenderGraphError {
 impl std::fmt::Display for RenderGraphError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RenderGraphError::CyclicDependency => write!(f, "Cyclic dependency detected in render graph"),
+            RenderGraphError::CyclicDependency => {
+                write!(f, "Cyclic dependency detected in render graph")
+            }
             RenderGraphError::PassNotFound(id) => write!(f, "Render pass not found: {id}"),
             RenderGraphError::ResourceNotFound(id) => write!(f, "Resource not found: {id}"),
-            RenderGraphError::CompilationFailed(msg) => write!(f, "Render graph compilation failed: {msg}"),
-            RenderGraphError::ExecutionFailed(msg) => write!(f, "Render graph execution failed: {msg}"),
+            RenderGraphError::CompilationFailed(msg) => {
+                write!(f, "Render graph compilation failed: {msg}")
+            }
+            RenderGraphError::ExecutionFailed(msg) => {
+                write!(f, "Render graph execution failed: {msg}")
+            }
         }
     }
 }
@@ -94,6 +100,7 @@ pub trait RenderPass: Send + Sync {
 #[derive(Debug)]
 pub struct CompiledRenderGraph {
     passes: Vec<PassId>,
+    #[allow(dead_code)]
     resource_dependencies: HashMap<ResourceId, Vec<PassId>>,
 }
 
@@ -119,29 +126,29 @@ impl RenderGraph {
     pub fn add_pass(&mut self, pass: Box<dyn RenderPass>) {
         let id = pass.id();
         let resources = pass.resources();
-        
-        log::debug!("Adding render pass: {}", id);
-        log::debug!("  Resources: {:?}", resources);
-        
+
+        log::debug!("Adding render pass: {id}");
+        log::debug!("  Resources: {resources:?}");
+
         self.resource_declarations.insert(id.clone(), resources);
         self.passes.insert(id, pass);
-        
+
         // Invalidate compilation
         self.compiled = None;
     }
 
     /// Remove a render pass from the graph
     pub fn remove_pass(&mut self, id: &PassId) -> bool {
-        log::debug!("Removing render pass: {}", id);
-        
+        log::debug!("Removing render pass: {id}");
+
         let removed = self.passes.remove(id).is_some();
         self.resource_declarations.remove(id);
-        
+
         if removed {
             // Invalidate compilation
             self.compiled = None;
         }
-        
+
         removed
     }
 
@@ -156,16 +163,16 @@ impl RenderGraph {
     /// Compile the render graph
     pub fn compile(&mut self) -> Result<(), RenderGraphError> {
         log::info!("Compiling render graph with {} passes", self.passes.len());
-        
+
         // Build dependency graph
         let mut dependencies: HashMap<PassId, HashSet<PassId>> = HashMap::new();
         let mut resource_writers: HashMap<ResourceId, Vec<PassId>> = HashMap::new();
         let mut resource_readers: HashMap<ResourceId, Vec<PassId>> = HashMap::new();
-        
+
         // First pass: collect all resource writers and readers
         for (pass_id, resources) in &self.resource_declarations {
             dependencies.insert(pass_id.clone(), HashSet::new());
-            
+
             for resource in resources {
                 match resource.usage {
                     ResourceUsage::Write | ResourceUsage::ReadWrite => {
@@ -176,7 +183,7 @@ impl RenderGraph {
                     }
                     _ => {}
                 }
-                
+
                 match resource.usage {
                     ResourceUsage::Read | ResourceUsage::ReadWrite => {
                         resource_readers
@@ -195,10 +202,7 @@ impl RenderGraph {
                 for reader in readers {
                     for writer in writers {
                         if reader != writer {
-                            dependencies
-                                .get_mut(reader)
-                                .unwrap()
-                                .insert(writer.clone());
+                            dependencies.get_mut(reader).unwrap().insert(writer.clone());
                         }
                     }
                 }
@@ -207,7 +211,7 @@ impl RenderGraph {
 
         // Topological sort
         let sorted_passes = self.topological_sort(&dependencies)?;
-        
+
         // Build resource dependency map
         let mut resource_dependencies: HashMap<ResourceId, Vec<PassId>> = HashMap::new();
         for (resource_id, passes) in resource_writers {
@@ -224,7 +228,10 @@ impl RenderGraph {
     }
 
     /// Perform topological sort to determine execution order
-    fn topological_sort(&self, dependencies: &HashMap<PassId, HashSet<PassId>>) -> Result<Vec<PassId>, RenderGraphError> {
+    fn topological_sort(
+        &self,
+        dependencies: &HashMap<PassId, HashSet<PassId>>,
+    ) -> Result<Vec<PassId>, RenderGraphError> {
         let mut in_degree: HashMap<PassId, usize> = HashMap::new();
         let mut adj_list: HashMap<PassId, Vec<PassId>> = HashMap::new();
 
@@ -280,29 +287,36 @@ impl RenderGraph {
         queue: &wgpu::Queue,
         resource_manager: &ResourceManager,
     ) -> Result<(), RenderGraphError> {
-        let compiled = self.compiled.as_ref().ok_or_else(|| {
-            RenderGraphError::CompilationFailed("Graph not compiled".to_string())
-        })?;
+        let compiled = self
+            .compiled
+            .as_ref()
+            .ok_or_else(|| RenderGraphError::CompilationFailed("Graph not compiled".to_string()))?;
 
-        log::debug!("Executing render graph with {} passes", compiled.passes.len());
+        log::debug!(
+            "Executing render graph with {} passes",
+            compiled.passes.len()
+        );
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Graph Command Encoder"),
         });
 
         for pass_id in &compiled.passes {
-            let pass = self.passes.get(pass_id).ok_or_else(|| {
-                RenderGraphError::PassNotFound(pass_id.clone())
-            })?;
+            let pass = self
+                .passes
+                .get(pass_id)
+                .ok_or_else(|| RenderGraphError::PassNotFound(pass_id.clone()))?;
 
-            log::debug!("Executing pass: {}", pass_id);
-            
+            log::debug!("Executing pass: {pass_id}");
+
             pass.execute(device, queue, resource_manager, &mut encoder)
-                .map_err(|e| RenderGraphError::ExecutionFailed(format!("Pass {} failed: {}", pass_id, e)))?;
+                .map_err(|e| {
+                    RenderGraphError::ExecutionFailed(format!("Pass {pass_id} failed: {e}"))
+                })?;
         }
 
         queue.submit(std::iter::once(encoder.finish()));
-        
+
         log::debug!("Render graph execution completed");
         Ok(())
     }

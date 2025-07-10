@@ -1,7 +1,7 @@
 use crate::graphics_api::{GraphicsApi, GraphicsError};
-use crate::render_graph::{RenderGraph, RenderGraphError, PlaceholderPass, ResourceUsage};
+use crate::render_graph::{PlaceholderPass, RenderGraph, RenderGraphError, ResourceUsage};
 use crate::resource_manager::ResourceManager;
-use crate::scene::{Scene, NodeContent};
+use crate::scene::{NodeContent, Scene};
 
 /// Errors that can occur during rendering operations
 #[derive(Debug)]
@@ -81,7 +81,7 @@ impl Renderer {
     /// Create a new renderer
     pub fn new(graphics_api: Box<dyn GraphicsApi>) -> Self {
         log::info!("Creating renderer");
-        
+
         Self {
             graphics_api,
             resource_manager: ResourceManager::new(),
@@ -117,8 +117,8 @@ impl Renderer {
         log::debug!("Setting up default render graph");
 
         // Clear pass
-        let clear_pass = PlaceholderPass::new("ClearPass")
-            .with_resource("BackBuffer", ResourceUsage::Write);
+        let clear_pass =
+            PlaceholderPass::new("ClearPass").with_resource("BackBuffer", ResourceUsage::Write);
         self.render_graph.add_pass(Box::new(clear_pass));
 
         // Forward render pass
@@ -172,27 +172,27 @@ impl Renderer {
 
     /// Resize the renderer's resources
     pub fn resize(&mut self, width: u32, height: u32) -> Result<(), RendererError> {
-        log::info!("Resizing renderer to {}x{}", width, height);
-        
+        log::info!("Resizing renderer to {width}x{height}");
+
         self.graphics_api.resize(width, height);
-        
+
         // Recreate size-dependent resources
         if self.initialized {
             self.create_default_resources()?;
         }
-        
+
         Ok(())
     }
 
     /// Perform visibility culling on the scene
     fn cull_scene<'a>(&self, scene: &'a Scene) -> Vec<&'a crate::scene::SceneNode> {
         log::trace!("Performing scene culling");
-        
+
         // For now, just return all visible mesh nodes
         // In a real implementation, this would perform frustum culling,
         // occlusion culling, distance culling, etc.
         let visible_nodes = scene.get_mesh_nodes();
-        
+
         log::trace!("Culled scene: {} visible nodes", visible_nodes.len());
         visible_nodes
     }
@@ -200,15 +200,15 @@ impl Renderer {
     /// Build the render graph for the current frame
     fn build_frame_render_graph(&mut self, _scene: &Scene) -> Result<(), RendererError> {
         log::trace!("Building frame render graph");
-        
+
         // For now, use the default render graph
         // In a real implementation, this would dynamically build the graph
         // based on scene content, lighting, post-processing effects, etc.
-        
+
         if !self.render_graph.is_compiled() {
             self.render_graph.compile()?;
         }
-        
+
         Ok(())
     }
 

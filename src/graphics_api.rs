@@ -25,7 +25,9 @@ impl std::error::Error for GraphicsError {}
 /// Trait for graphics API abstraction
 pub trait GraphicsApi: Send + Sync {
     /// Initialize the graphics API
-    fn new(window: Option<&Window>) -> impl std::future::Future<Output = Result<Self, GraphicsError>>
+    fn new(
+        window: Option<&Window>,
+    ) -> impl std::future::Future<Output = Result<Self, GraphicsError>>
     where
         Self: Sized;
 
@@ -57,6 +59,7 @@ pub struct WgpuGraphicsApi {
     queue: wgpu::Queue,
     surface_format: wgpu::TextureFormat,
     surface_size: (u32, u32),
+    #[allow(dead_code)]
     has_surface: bool,
 }
 
@@ -73,9 +76,10 @@ impl WgpuGraphicsApi {
 
         // Create surface if window is provided (but don't store it)
         let (surface_format, surface_size, has_surface) = if let Some(window) = window {
-            let surface = instance.create_surface(window)
+            let surface = instance
+                .create_surface(window)
                 .map_err(|e| GraphicsError::Other(format!("Failed to create surface: {e}")))?;
-            
+
             // Request adapter
             let adapter = instance
                 .request_adapter(&wgpu::RequestAdapterOptions {
@@ -85,7 +89,7 @@ impl WgpuGraphicsApi {
                 })
                 .await
                 .ok_or(GraphicsError::AdapterNotFound)?;
-            
+
             let size = window.inner_size();
             let surface_caps = surface.get_capabilities(&adapter);
             let surface_format = surface_caps
@@ -94,7 +98,7 @@ impl WgpuGraphicsApi {
                 .find(|f| f.is_srgb())
                 .copied()
                 .unwrap_or(surface_caps.formats[0]);
-            
+
             // We'll configure the surface later when we have the device
             (surface_format, (size.width, size.height), true)
         } else {
@@ -146,7 +150,7 @@ impl GraphicsApi for WgpuGraphicsApi {
     }
 
     fn resize(&mut self, width: u32, height: u32) {
-        log::debug!("Resizing surface to {}x{}", width, height);
+        log::debug!("Resizing surface to {width}x{height}");
         self.surface_size = (width, height);
         // Note: In a full implementation, we'd reconfigure the surface here
     }
