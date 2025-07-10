@@ -10,6 +10,7 @@ fn test_default_args() {
     assert_eq!(args.format, "png");
     assert_eq!(args.samples, 1);
     assert!(!args.verbose);
+    assert_eq!(args.log_level, "info");
 }
 
 #[test]
@@ -34,6 +35,8 @@ fn test_short_args() {
         "-s",
         "4",
         "-v",
+        "-l",
+        "debug",
     ]);
     assert_eq!(args.width, 1024);
     assert_eq!(args.height, 768);
@@ -41,6 +44,7 @@ fn test_short_args() {
     assert_eq!(args.format, "jpg");
     assert_eq!(args.samples, 4);
     assert!(args.verbose);
+    assert_eq!(args.log_level, "debug");
 }
 
 #[test]
@@ -58,6 +62,8 @@ fn test_long_args() {
         "--samples",
         "8",
         "--verbose",
+        "--log-level",
+        "warn",
     ]);
     assert_eq!(args.width, 2560);
     assert_eq!(args.height, 1440);
@@ -65,6 +71,7 @@ fn test_long_args() {
     assert_eq!(args.format, "png");
     assert_eq!(args.samples, 8);
     assert!(args.verbose);
+    assert_eq!(args.log_level, "warn");
 }
 
 #[test]
@@ -81,4 +88,25 @@ fn test_validation_functions() {
 fn test_mixed_case_formats() {
     let args = Args::parse_from(["render_sandbox", "--format", "PNG"]);
     assert_eq!(args.format, "PNG");
+}
+
+#[test]
+fn test_log_level_options() {
+    let valid_levels = ["error", "warn", "info", "debug", "trace"];
+    for level in valid_levels {
+        let args = Args::parse_from(["render_sandbox", "--log-level", level]);
+        assert_eq!(args.log_level, level);
+    }
+}
+
+#[test]
+fn test_log_level_short_option() {
+    let args = Args::parse_from(["render_sandbox", "-l", "error"]);
+    assert_eq!(args.log_level, "error");
+}
+
+#[test]
+fn test_log_level_mixed_case() {
+    let args = Args::parse_from(["render_sandbox", "--log-level", "ERROR"]);
+    assert_eq!(args.log_level, "ERROR");
 }
