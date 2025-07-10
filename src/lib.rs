@@ -1,5 +1,8 @@
 use clap::Parser;
 
+pub mod app_core;
+pub mod engine;
+
 /// A graphics rendering application
 #[derive(Parser, Debug)]
 #[command(name = "render_sandbox")]
@@ -33,4 +36,8 @@ pub struct Args {
     /// Log level (error, warn, info, debug, trace)
     #[arg(short = 'l', long = "log-level", default_value = "info")]
     pub log_level: String,
+
+    /// Run in headless mode (no window)
+    #[arg(long = "headless")]
+    pub headless: bool,
 }
