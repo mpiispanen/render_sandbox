@@ -1,4 +1,4 @@
-use crate::engine::{Engine, EngineError, PlaceholderEngine};
+use crate::engine::{Engine, EngineError, RealTimeEngine};
 use log::{debug, error, info, warn};
 use winit::{
     dpi::PhysicalSize,
@@ -11,7 +11,7 @@ use winit::{
 pub struct Application {
     window: Option<Window>,
     event_loop: Option<EventLoop<()>>,
-    engine: Box<dyn Engine>,
+    engine: Option<Box<dyn Engine>>,
     should_exit: bool,
     is_headless: bool,
 }
@@ -24,11 +24,10 @@ impl Application {
 
         if headless {
             // Headless mode - no window or event loop
-            let engine = Box::new(PlaceholderEngine::new(None)?);
             Ok(Application {
                 window: None,
                 event_loop: None,
-                engine,
+                engine: None,
                 should_exit: false,
                 is_headless: true,
             })
@@ -46,21 +45,37 @@ impl Application {
                     EngineError::InitializationError(format!("Failed to create window: {e}"))
                 })?;
 
-            let engine = Box::new(PlaceholderEngine::new(Some(&window))?);
-
             Ok(Application {
                 window: Some(window),
                 event_loop: Some(event_loop),
-                engine,
+                engine: None,
                 should_exit: false,
                 is_headless: false,
             })
         }
     }
 
+    /// Initialize the engine asynchronously
+    async fn initialize_engine(&mut self) -> Result<(), EngineError> {
+        info!("Initializing engine");
+        
+        let engine = if self.is_headless {
+            Box::new(RealTimeEngine::new(None).await?) as Box<dyn Engine>
+        } else {
+            Box::new(RealTimeEngine::new(self.window.as_ref()).await?) as Box<dyn Engine>
+        };
+        
+        self.engine = Some(engine);
+        info!("Engine initialized successfully");
+        Ok(())
+    }
+
     /// Runs the application loop
     /// Delegates to `run_windowed` or `run_headless` based on `is_headless`
     pub fn run(mut self) -> Result<(), EngineError> {
+        // Initialize engine in a blocking way
+        futures::executor::block_on(self.initialize_engine())?;
+        
         if self.is_headless {
             info!("Starting headless mode");
             let frame_data = self.run_headless(Some(10))?; // Render 10 frames by default
@@ -100,7 +115,9 @@ impl Application {
                                 }
                                 WindowEvent::Resized(physical_size) => {
                                     debug!("Window resized to: {physical_size:?}");
-                                    self.engine.resize(physical_size);
+                                    if let Some(engine) = &mut self.engine {
+                                        engine.resize(physical_size);
+                                    }
                                 }
                                 WindowEvent::KeyboardInput { event, .. } => {
                                     // Handle escape key to exit
@@ -112,9 +129,9 @@ impl Application {
                                         info!("Escape key pressed, exiting");
                                         self.should_exit = true;
                                         elwt.exit();
-                                    } else {
+                                    } else if let Some(engine) = &mut self.engine {
                                         // Pass the original event directly to the engine
-                                        self.engine.handle_input(&WindowEvent::KeyboardInput {
+                                        engine.handle_input(&WindowEvent::KeyboardInput {
                                             event,
                                             device_id: unsafe { winit::event::DeviceId::dummy() },
                                             is_synthetic: false,
@@ -123,12 +140,16 @@ impl Application {
                                 }
                                 WindowEvent::RedrawRequested => {
                                     debug!("Redraw requested");
-                                    if let Err(e) = self.engine.render() {
-                                        error!("Render error: {e}");
+                                    if let Some(engine) = &mut self.engine {
+                                        if let Err(e) = engine.render() {
+                                            error!("Render error: {e}");
+                                        }
                                     }
                                 }
                                 _ => {
-                                    self.engine.handle_input(&event);
+                                    if let Some(engine) = &mut self.engine {
+                                        engine.handle_input(&event);
+                                    }
                                 }
                             }
                         }
@@ -136,7 +157,9 @@ impl Application {
                 }
                 Event::AboutToWait => {
                     // Update game logic
-                    self.engine.update();
+                    if let Some(engine) = &mut self.engine {
+                        engine.update();
+                    }
 
                     // Request redraw
                     if let Some(window) = &self.window {
@@ -165,11 +188,13 @@ impl Application {
 
         while frame_count < max_frames && !self.should_exit {
             // Update engine
-            self.engine.update();
+            if let Some(engine) = &mut self.engine {
+                engine.update();
 
-            // Render frame
-            if let Err(e) = self.engine.render() {
-                warn!("Render error in headless mode: {e}");
+                // Render frame
+                if let Err(e) = engine.render() {
+                    warn!("Render error in headless mode: {e}");
+                }
             }
 
             frame_count += 1;
@@ -183,7 +208,11 @@ impl Application {
         info!("Completed {frame_count} frames in headless mode");
 
         // Return the last rendered frame data
-        Ok(self.engine.get_rendered_frame_data())
+        if let Some(engine) = &self.engine {
+            Ok(engine.get_rendered_frame_data())
+        } else {
+            Ok(None)
+        }
     }
 
     /// Returns whether the application is in headless mode
