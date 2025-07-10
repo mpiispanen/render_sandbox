@@ -13,14 +13,15 @@ fn main() {
         "debug" => log::LevelFilter::Debug,
         "trace" => log::LevelFilter::Trace,
         _ => {
-            eprintln!("Error: Invalid log level '{}'. Valid levels: error, warn, info, debug, trace", args.log_level);
+            eprintln!(
+                "Error: Invalid log level '{}'. Valid levels: error, warn, info, debug, trace",
+                args.log_level
+            );
             std::process::exit(1);
         }
     };
 
-    env_logger::Builder::new()
-        .filter_level(log_level)
-        .init();
+    env_logger::Builder::new().filter_level(log_level).init();
 
     debug!("Starting render_sandbox with arguments: {args:?}");
 
@@ -61,14 +62,17 @@ fn main() {
 
     // TODO: Implement actual rendering logic here
     debug!("Starting rendering process...");
-    
+
     // Simulate some rendering steps with different log levels
     debug!("Initializing rendering context");
     debug!("Setting up {} samples for anti-aliasing", args.samples);
-    
+
     if args.samples > 16 {
-        warn!("High sample count ({}) may impact performance", args.samples);
+        warn!(
+            "High sample count ({}) may impact performance",
+            args.samples
+        );
     }
-    
+
     info!("Rendering complete!");
 }
