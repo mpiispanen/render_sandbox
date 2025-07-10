@@ -110,3 +110,15 @@ fn test_log_level_mixed_case() {
     let args = Args::parse_from(["render_sandbox", "--log-level", "ERROR"]);
     assert_eq!(args.log_level, "ERROR");
 }
+
+#[test]
+fn test_headless_flag() {
+    let args = Args::parse_from(["render_sandbox", "--headless"]);
+    assert!(args.headless);
+}
+
+#[test]
+fn test_default_headless_false() {
+    let args = Args::parse_from(["render_sandbox"]);
+    assert!(!args.headless);
+}
