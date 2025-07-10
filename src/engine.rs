@@ -12,9 +12,9 @@ pub enum EngineError {
 impl std::fmt::Display for EngineError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            EngineError::InitializationError(msg) => write!(f, "Initialization error: {}", msg),
-            EngineError::RenderingError(msg) => write!(f, "Rendering error: {}", msg),
-            EngineError::Other(msg) => write!(f, "Engine error: {}", msg),
+            EngineError::InitializationError(msg) => write!(f, "Initialization error: {msg}"),
+            EngineError::RenderingError(msg) => write!(f, "Rendering error: {msg}"),
+            EngineError::Other(msg) => write!(f, "Engine error: {msg}"),
         }
     }
 }
@@ -52,7 +52,10 @@ pub struct PlaceholderEngine {
 
 impl Engine for PlaceholderEngine {
     fn new(window_handle: Option<&Window>) -> Result<Self, EngineError> {
-        log::info!("Creating placeholder engine (headless: {})", window_handle.is_none());
+        log::info!(
+            "Creating placeholder engine (headless: {})",
+            window_handle.is_none()
+        );
         Ok(PlaceholderEngine {
             frame_count: 0,
             is_headless: window_handle.is_none(),
@@ -77,13 +80,15 @@ impl Engine for PlaceholderEngine {
     }
 
     fn handle_input(&mut self, event: &WindowEvent) {
-        log::debug!("Handling input event: {:?}", event);
+        log::debug!("Handling input event: {event:?}");
     }
 
     fn get_rendered_frame_data(&self) -> Option<Vec<u8>> {
         if self.is_headless {
             // Return placeholder RGBA data (tiny 2x2 image)
-            Some(vec![255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255])
+            Some(vec![
+                255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
+            ])
         } else {
             None
         }

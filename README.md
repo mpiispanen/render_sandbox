@@ -79,17 +79,47 @@ cargo build
 cargo test
 ```
 
-### Code Formatting
+### Code Formatting and Linting
+
+This project enforces consistent code formatting using `rustfmt` and code quality checks using `clippy`. All code must pass formatting and linting checks before being merged.
+
+#### Check Formatting and Linting
+
+Use the provided script to check if your code meets the formatting requirements:
 
 ```bash
+# Check formatting and linting (read-only)
+./check_format.sh
+
+# Automatically fix formatting issues
+./check_format.sh --fix
+```
+
+#### Manual Commands
+
+You can also run the tools manually:
+
+```bash
+# Check formatting (will fail if formatting is incorrect)
+cargo fmt --check
+
+# Fix formatting automatically
 cargo fmt
+
+# Run linting checks
+cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-### Linting
+#### Pre-commit Recommendations
+
+Before committing code, always run:
 
 ```bash
-cargo clippy
+./check_format.sh --fix
+cargo test
 ```
+
+This ensures your code is properly formatted, passes all linting checks, and doesn't break existing functionality.
 
 ## CI/CD
 

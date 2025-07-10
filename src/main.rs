@@ -65,12 +65,12 @@ fn main() {
     match Application::new(args.headless) {
         Ok(app) => {
             if let Err(e) = app.run() {
-                error!("Application error: {}", e);
+                error!("Application error: {e}");
                 std::process::exit(1);
             }
         }
         Err(e) => {
-            error!("Failed to create application: {}", e);
+            error!("Failed to create application: {e}");
             std::process::exit(1);
         }
     }

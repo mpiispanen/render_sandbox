@@ -11,16 +11,16 @@ fn test_application_headless_mode() {
 fn test_application_windowed_mode() {
     // Test that we can create an application in windowed mode
     // Note: This will fail in test environments due to threading restrictions
-    let result = std::panic::catch_unwind(|| {
-        Application::new(false)
-    });
-    
+    let result = std::panic::catch_unwind(|| Application::new(false));
+
     match result {
         Ok(Ok(_)) => println!("Windowed mode created successfully"),
-        Ok(Err(e)) => println!("Windowed mode failed (expected): {}", e),
-        Err(_) => println!("Windowed mode panicked (expected in test environment due to threading restrictions)"),
+        Ok(Err(e)) => println!("Windowed mode failed (expected): {e}"),
+        Err(_) => println!(
+            "Windowed mode panicked (expected in test environment due to threading restrictions)"
+        ),
     }
-    
+
     // This test always passes since windowed mode failure is expected in test environments
 }
 
@@ -29,7 +29,10 @@ fn test_headless_run() {
     // Test running the application in headless mode
     if let Ok(app) = Application::new(true) {
         let result = app.run();
-        assert!(result.is_ok(), "Headless application run failed: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Headless application run failed: {result:?}",
+        );
     }
 }
 

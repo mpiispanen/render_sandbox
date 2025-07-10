@@ -20,7 +20,7 @@ impl Application {
     /// Creates a new Application instance
     /// `headless`: If true, no window is created
     pub fn new(headless: bool) -> Result<Self, EngineError> {
-        info!("Creating application (headless: {})", headless);
+        info!("Creating application (headless: {headless})");
 
         if headless {
             // Headless mode - no window or event loop
@@ -35,7 +35,7 @@ impl Application {
         } else {
             // Windowed mode - create window and event loop
             let event_loop = EventLoop::new().map_err(|e| {
-                EngineError::InitializationError(format!("Failed to create event loop: {}", e))
+                EngineError::InitializationError(format!("Failed to create event loop: {e}"))
             })?;
 
             let window = WindowBuilder::new()
@@ -43,7 +43,7 @@ impl Application {
                 .with_inner_size(PhysicalSize::new(800, 600))
                 .build(&event_loop)
                 .map_err(|e| {
-                    EngineError::InitializationError(format!("Failed to create window: {}", e))
+                    EngineError::InitializationError(format!("Failed to create window: {e}"))
                 })?;
 
             let engine = Box::new(PlaceholderEngine::new(Some(&window))?);
@@ -99,24 +99,32 @@ impl Application {
                                     elwt.exit();
                                 }
                                 WindowEvent::Resized(physical_size) => {
-                                    debug!("Window resized to: {:?}", physical_size);
+                                    debug!("Window resized to: {physical_size:?}");
                                     self.engine.resize(physical_size);
                                 }
                                 WindowEvent::KeyboardInput { event, .. } => {
                                     // Handle escape key to exit
-                                    if event.physical_key == winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Escape) {
+                                    if event.physical_key
+                                        == winit::keyboard::PhysicalKey::Code(
+                                            winit::keyboard::KeyCode::Escape,
+                                        )
+                                    {
                                         info!("Escape key pressed, exiting");
                                         self.should_exit = true;
                                         elwt.exit();
                                     } else {
                                         // Pass the original event directly to the engine
-                                        self.engine.handle_input(&WindowEvent::KeyboardInput { event, device_id: unsafe { winit::event::DeviceId::dummy() }, is_synthetic: false });
+                                        self.engine.handle_input(&WindowEvent::KeyboardInput {
+                                            event,
+                                            device_id: unsafe { winit::event::DeviceId::dummy() },
+                                            is_synthetic: false,
+                                        });
                                     }
                                 }
                                 WindowEvent::RedrawRequested => {
                                     debug!("Redraw requested");
                                     if let Err(e) = self.engine.render() {
-                                        error!("Render error: {}", e);
+                                        error!("Render error: {e}");
                                     }
                                 }
                                 _ => {
@@ -161,7 +169,7 @@ impl Application {
 
             // Render frame
             if let Err(e) = self.engine.render() {
-                warn!("Render error in headless mode: {}", e);
+                warn!("Render error in headless mode: {e}");
             }
 
             frame_count += 1;
@@ -172,7 +180,7 @@ impl Application {
             }
         }
 
-        info!("Completed {} frames in headless mode", frame_count);
+        info!("Completed {frame_count} frames in headless mode");
 
         // Return the last rendered frame data
         Ok(self.engine.get_rendered_frame_data())
