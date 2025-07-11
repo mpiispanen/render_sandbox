@@ -32,7 +32,7 @@ fn test_application_with_custom_resolution() {
         "--height",
         "1080",
         "--gltf",
-        "custom_scene.gltf",
+        "test_assets/triangle.gltf",
     ]);
     let app = Application::new(args);
     assert!(
