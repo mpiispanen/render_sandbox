@@ -112,7 +112,12 @@ impl WgpuGraphicsApi {
                 .await
                 .ok_or(GraphicsError::AdapterNotFound)?;
 
-            (adapter, wgpu::TextureFormat::Rgba8UnormSrgb, (800, 600), false)
+            (
+                adapter,
+                wgpu::TextureFormat::Rgba8UnormSrgb,
+                (800, 600),
+                false,
+            )
         };
 
         log::info!("Selected adapter: {:?}", adapter.get_info());
