@@ -110,7 +110,10 @@ pub struct RealTimeEngine {
 }
 
 impl RealTimeEngine {
-    async fn new_impl(window_handle: Option<&Window>, gltf_path: &str) -> Result<Self, EngineError> {
+    async fn new_impl(
+        window_handle: Option<&Window>,
+        gltf_path: &str,
+    ) -> Result<Self, EngineError> {
         log::info!(
             "Creating real-time engine (headless: {})",
             window_handle.is_none()

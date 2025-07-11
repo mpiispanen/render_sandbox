@@ -48,6 +48,10 @@ pub struct Args {
     pub headless: bool,
 
     /// Path to GLTF file to load
-    #[arg(short = 'g', long = "gltf", default_value = "test_assets/triangle.gltf")]
+    #[arg(
+        short = 'g',
+        long = "gltf",
+        default_value = "test_assets/triangle.gltf"
+    )]
     pub gltf_path: String,
 }

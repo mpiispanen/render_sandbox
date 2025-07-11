@@ -66,7 +66,8 @@ impl Application {
         let engine = if self.is_headless {
             Box::new(RealTimeEngine::new(None, &self.gltf_path).await?) as Box<dyn Engine>
         } else {
-            Box::new(RealTimeEngine::new(self.window.as_ref(), &self.gltf_path).await?) as Box<dyn Engine>
+            Box::new(RealTimeEngine::new(self.window.as_ref(), &self.gltf_path).await?)
+                as Box<dyn Engine>
         };
 
         self.engine = Some(engine);

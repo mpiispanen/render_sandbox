@@ -14,7 +14,9 @@ fn test_application_windowed_mode() {
     // This test verifies the windowed mode logic works, even if it can't run in test environments
 
     // Use panic::catch_unwind to handle the expected threading panic in test environments
-    let result = std::panic::catch_unwind(|| Application::new(false, "test_assets/triangle.gltf".to_string()));
+    let result = std::panic::catch_unwind(|| {
+        Application::new(false, "test_assets/triangle.gltf".to_string())
+    });
 
     match result {
         Ok(Ok(application)) => {
