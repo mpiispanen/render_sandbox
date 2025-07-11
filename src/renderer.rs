@@ -364,13 +364,12 @@ impl Renderer {
         log::info!("Loading GLTF file to scene: {}", path.as_ref().display());
 
         let device = self.graphics_api.device();
-        let mut gltf_loader = unsafe {
-            crate::gltf_loader::GltfLoader::new(device, self.resource_manager_mut())
-        };
+        let mut gltf_loader =
+            unsafe { crate::gltf_loader::GltfLoader::new(device, self.resource_manager_mut()) };
 
         gltf_loader
             .load_gltf(path, scene)
-            .map_err(|e| RendererError::Other(format!("GLTF loading failed: {}", e)))?;
+            .map_err(|e| RendererError::Other(format!("GLTF loading failed: {e}")))?;
 
         log::info!("GLTF file loaded successfully");
         Ok(())
@@ -381,13 +380,12 @@ impl Renderer {
         log::info!("Creating GLTF-style test triangle");
 
         let device = self.graphics_api.device();
-        let mut gltf_loader = unsafe {
-            crate::gltf_loader::GltfLoader::new(device, self.resource_manager_mut())
-        };
+        let mut gltf_loader =
+            unsafe { crate::gltf_loader::GltfLoader::new(device, self.resource_manager_mut()) };
 
-        let mesh = gltf_loader
-            .create_test_triangle()
-            .map_err(|e| RendererError::Other(format!("GLTF test triangle creation failed: {}", e)))?;
+        let mesh = gltf_loader.create_test_triangle().map_err(|e| {
+            RendererError::Other(format!("GLTF test triangle creation failed: {e}"))
+        })?;
 
         // Create a mesh node
         let mesh_node = crate::scene::SceneNode::with_name("GltfTestTriangle")

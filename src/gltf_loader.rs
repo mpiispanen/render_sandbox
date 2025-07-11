@@ -1,5 +1,5 @@
-use crate::scene::{Camera, Mesh, NodeContent, Scene, SceneNode, Transform};
 use crate::resource_manager::ResourceManager;
+use crate::scene::{Camera, Mesh, NodeContent, Scene, SceneNode, Transform};
 use cgmath::{Quaternion, Vector3};
 use std::path::Path;
 
@@ -45,7 +45,7 @@ pub struct GltfLoader {
 
 impl GltfLoader {
     /// Create a new GLTF loader
-    /// 
+    ///
     /// # Safety
     /// The device and resource_manager pointers must remain valid for the lifetime of this loader
     pub unsafe fn new(device: *const wgpu::Device, resource_manager: *mut ResourceManager) -> Self {
@@ -56,7 +56,11 @@ impl GltfLoader {
     }
 
     /// Load a GLTF file and add its contents to the scene
-    pub fn load_gltf<P: AsRef<Path>>(&mut self, path: P, scene: &mut Scene) -> Result<(), GltfError> {
+    pub fn load_gltf<P: AsRef<Path>>(
+        &mut self,
+        path: P,
+        scene: &mut Scene,
+    ) -> Result<(), GltfError> {
         log::info!("Loading GLTF file: {}", path.as_ref().display());
 
         let (gltf, buffers, _images) = gltf::import(path)?;
@@ -64,7 +68,7 @@ impl GltfLoader {
         // Process each scene in the GLTF file
         for gltf_scene in gltf.scenes() {
             log::debug!("Processing GLTF scene: {}", gltf_scene.index());
-            
+
             // Process each root node in the scene
             for node in gltf_scene.nodes() {
                 let scene_node = self.process_node(&node, &buffers)?;
@@ -77,7 +81,11 @@ impl GltfLoader {
     }
 
     /// Process a GLTF node and convert it to our scene format
-    fn process_node(&mut self, gltf_node: &gltf::Node, buffers: &[gltf::buffer::Data]) -> Result<SceneNode, GltfError> {
+    fn process_node(
+        &mut self,
+        gltf_node: &gltf::Node,
+        buffers: &[gltf::buffer::Data],
+    ) -> Result<SceneNode, GltfError> {
         log::debug!("Processing GLTF node: {}", gltf_node.index());
 
         // Create the scene node
@@ -115,28 +123,41 @@ impl GltfLoader {
     }
 
     /// Process a GLTF mesh and convert it to our mesh format
-    fn process_mesh(&mut self, gltf_mesh: &gltf::Mesh, buffers: &[gltf::buffer::Data]) -> Result<Mesh, GltfError> {
+    fn process_mesh(
+        &mut self,
+        gltf_mesh: &gltf::Mesh,
+        buffers: &[gltf::buffer::Data],
+    ) -> Result<Mesh, GltfError> {
         log::debug!("Processing GLTF mesh: {}", gltf_mesh.index());
 
         // For now, we'll just process the first primitive of the mesh
-        let primitive = gltf_mesh.primitives().next()
+        let primitive = gltf_mesh
+            .primitives()
+            .next()
             .ok_or_else(|| GltfError::ValidationError("Mesh has no primitives".to_string()))?;
 
         // Get vertex data
         let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
 
         // Read positions (required)
-        let positions: Vec<[f32; 3]> = reader.read_positions()
-            .ok_or_else(|| GltfError::ValidationError("Mesh primitive has no positions".to_string()))?
+        let positions: Vec<[f32; 3]> = reader
+            .read_positions()
+            .ok_or_else(|| {
+                GltfError::ValidationError("Mesh primitive has no positions".to_string())
+            })?
             .collect();
 
         // Convert to flat vertex array (just positions for now)
-        let vertices: Vec<f32> = positions.iter().flat_map(|pos| pos.iter()).copied().collect();
+        let vertices: Vec<f32> = positions
+            .iter()
+            .flat_map(|pos| pos.iter())
+            .copied()
+            .collect();
 
         // Read indices if available
-        let indices: Option<Vec<u16>> = reader.read_indices().map(|iter| {
-            iter.into_u32().map(|i| i as u16).collect()
-        });
+        let indices: Option<Vec<u16>> = reader
+            .read_indices()
+            .map(|iter| iter.into_u32().map(|i| i as u16).collect());
 
         // Create the mesh using the resource manager
         unsafe {
@@ -182,17 +203,15 @@ impl GltfLoader {
         log::debug!("Processing GLTF camera: {}", gltf_camera.index());
 
         match gltf_camera.projection() {
-            gltf::camera::Projection::Perspective(perspective) => {
-                Ok(Camera::perspective(
-                    perspective.yfov().to_degrees(),
-                    perspective.aspect_ratio().unwrap_or(16.0 / 9.0),
-                    perspective.znear(),
-                    perspective.zfar().unwrap_or(1000.0),
-                ))
-            }
-            gltf::camera::Projection::Orthographic(_) => {
-                Err(GltfError::UnsupportedFeature("Orthographic cameras".to_string()))
-            }
+            gltf::camera::Projection::Perspective(perspective) => Ok(Camera::perspective(
+                perspective.yfov().to_degrees(),
+                perspective.aspect_ratio().unwrap_or(16.0 / 9.0),
+                perspective.znear(),
+                perspective.zfar().unwrap_or(1000.0),
+            )),
+            gltf::camera::Projection::Orthographic(_) => Err(GltfError::UnsupportedFeature(
+                "Orthographic cameras".to_string(),
+            )),
         }
     }
 
@@ -238,7 +257,7 @@ mod tests {
     #[test]
     fn test_gltf_error_display() {
         let err = GltfError::ValidationError("test error".to_string());
-        assert_eq!(format!("{}", err), "Validation error: test error");
+        assert_eq!(format!("{err}"), "Validation error: test error");
     }
 
     #[test]
