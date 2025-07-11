@@ -106,15 +106,8 @@ impl WgpuGraphicsApi {
             (wgpu::TextureFormat::Rgba8UnormSrgb, (800, 600), false)
         };
 
-        // Request adapter (again for headless case)
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
-                compatible_surface: None, // No surface for headless
-                force_fallback_adapter: false,
-            })
-            .await
-            .ok_or(GraphicsError::AdapterNotFound)?;
+        // Reuse the adapter obtained earlier
+        // No need to request another adapter for headless mode
 
         log::info!("Selected adapter: {:?}", adapter.get_info());
 
