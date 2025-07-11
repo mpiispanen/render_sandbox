@@ -436,37 +436,39 @@ impl RenderPass for ForwardRenderPass {
 
     fn execute(
         &self,
-        device: &wgpu::Device,
+        _device: &wgpu::Device,
         _queue: &wgpu::Queue,
-        _resource_manager: &ResourceManager,
+        resource_manager: &ResourceManager,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<(), RenderGraphError> {
         log::debug!("Executing forward render pass: {}", self.id);
 
-        // For now, create a simple offscreen texture to render to
-        // In a full implementation, this would use the actual render targets
-        let render_texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Forward Render Target"),
-            size: wgpu::Extent3d {
-                width: self.resolution.0,
-                height: self.resolution.1,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            view_formats: &[],
-        });
+        // Get the actual render targets from the resource manager
+        let back_buffer_handle: crate::resource_manager::Handle<wgpu::Texture> = resource_manager
+            .get_named_resource("BackBuffer")
+            .ok_or_else(|| RenderGraphError::ResourceNotFound(crate::render_graph::ResourceId::new("BackBuffer")))?;
+        
+        let back_buffer = resource_manager
+            .get_texture(back_buffer_handle)
+            .map_err(|e| RenderGraphError::ExecutionFailed(format!("Failed to get BackBuffer: {e}")))?;
 
-        let render_view = render_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let depth_buffer_handle: crate::resource_manager::Handle<wgpu::Texture> = resource_manager
+            .get_named_resource("DepthBuffer")
+            .ok_or_else(|| RenderGraphError::ResourceNotFound(crate::render_graph::ResourceId::new("DepthBuffer")))?;
+        
+        let depth_buffer = resource_manager
+            .get_texture(depth_buffer_handle)
+            .map_err(|e| RenderGraphError::ExecutionFailed(format!("Failed to get DepthBuffer: {e}")))?;
 
-        // Create a render pass that clears the screen
+        // Create texture views for rendering
+        let color_view = back_buffer.create_view(&wgpu::TextureViewDescriptor::default());
+        let depth_view = depth_buffer.create_view(&wgpu::TextureViewDescriptor::default());
+
+        // Create the render pass with proper render targets
         let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Forward Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &render_view,
+                view: &color_view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -478,14 +480,19 @@ impl RenderPass for ForwardRenderPass {
                     store: wgpu::StoreOp::Store,
                 },
             })],
-            depth_stencil_attachment: None,
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &depth_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
             timestamp_writes: None,
             occlusion_query_set: None,
         });
 
-        // For now, just clear the render target
-        // TODO: Actual mesh rendering would happen here
-        log::debug!("Forward render pass executed with clear");
+        log::debug!("Forward render pass executed with proper render targets");
 
         Ok(())
     }

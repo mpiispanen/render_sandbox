@@ -146,8 +146,8 @@ impl Renderer {
         let device = self.graphics_api.device();
         let (width, height) = self.graphics_api.surface_size();
 
-        // Create depth buffer
-        let _depth_texture = self.resource_manager.create_texture(
+        // Create depth buffer and register it as "DepthBuffer" for the render graph
+        let depth_texture = self.resource_manager.create_texture(
             device,
             &wgpu::TextureDescriptor {
                 label: Some("Depth Texture"),
@@ -164,8 +164,29 @@ impl Renderer {
                 view_formats: &[],
             },
         );
+        self.resource_manager.register_named_resource("DepthBuffer", depth_texture);
 
-        log::debug!("Default resources created");
+        // Create back buffer (color target) and register it as "BackBuffer" for the render graph
+        let back_buffer = self.resource_manager.create_texture(
+            device,
+            &wgpu::TextureDescriptor {
+                label: Some("Back Buffer"),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: self.config.msaa_samples,
+                dimension: wgpu::TextureDimension::D2,
+                format: self.graphics_api.surface_format(),
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                view_formats: &[],
+            },
+        );
+        self.resource_manager.register_named_resource("BackBuffer", back_buffer);
+
+        log::debug!("Default resources created and registered");
         Ok(())
     }
 
