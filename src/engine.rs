@@ -131,10 +131,31 @@ impl RealTimeEngine {
         // Create scene
         let mut scene = Scene::new();
 
-        // Add a test triangle for demonstration
-        renderer.create_test_triangle(&mut scene).map_err(|e| {
-            EngineError::InitializationError(format!("Failed to create test triangle: {e}"))
-        })?;
+        // Try to load a GLTF file if available, otherwise create a GLTF-style test triangle
+        let gltf_path = "test_assets/triangle.gltf";
+        let triangle_created = if std::path::Path::new(gltf_path).exists() {
+            log::info!("Loading triangle from GLTF file: {}", gltf_path);
+            match renderer.load_gltf_to_scene(gltf_path, &mut scene) {
+                Ok(()) => {
+                    log::info!("Successfully loaded GLTF triangle");
+                    true
+                }
+                Err(e) => {
+                    log::warn!("Failed to load GLTF file ({}), falling back to test triangle", e);
+                    false
+                }
+            }
+        } else {
+            log::info!("GLTF file not found, using GLTF-style test triangle");
+            false
+        };
+
+        // If GLTF loading failed or file not found, create a GLTF-style test triangle
+        if !triangle_created {
+            renderer.create_gltf_test_triangle(&mut scene).map_err(|e| {
+                EngineError::InitializationError(format!("Failed to create GLTF test triangle: {e}"))
+            })?;
+        }
 
         Ok(RealTimeEngine {
             renderer,
