@@ -42,6 +42,44 @@ fn test_application_with_custom_resolution() {
 }
 
 #[test]
+fn test_application_with_invalid_sample_count() {
+    // Test that invalid sample counts are handled gracefully
+    let args = Args::parse_from([
+        "render_sandbox",
+        "--headless",
+        "--width",
+        "800",
+        "--height",
+        "600",
+        "--samples",
+        "3", // Invalid sample count
+        "--gltf",
+        "test_assets/triangle.gltf",
+    ]);
+
+    // Application creation should not panic even with invalid sample count
+    let app = Application::new(args);
+
+    // In environments without graphics drivers, this will fail with an appropriate error
+    // In environments with graphics drivers, it should succeed after clamping the sample count
+    match app {
+        Ok(_) => {
+            // Success case - sample count was validated and clamped
+            println!("Application created successfully with sample count validation");
+        }
+        Err(e) => {
+            // Expected failure in CI environments without graphics drivers
+            assert!(
+                e.to_string().contains("graphics adapter")
+                    || e.to_string().contains("graphics API")
+                    || e.to_string().contains("InitializationError"),
+                "Unexpected error type: {e}"
+            );
+        }
+    }
+}
+
+#[test]
 #[ignore] // Skip by default in CI - run with: cargo test -- --ignored
 fn test_application_windowed_mode() {
     // Test that we can create an application in windowed mode with custom resolution

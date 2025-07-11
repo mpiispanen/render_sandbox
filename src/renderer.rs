@@ -79,7 +79,10 @@ pub struct Renderer {
 
 impl Renderer {
     /// Create a new renderer with specified MSAA samples
-    pub fn new(graphics_api: Box<dyn GraphicsApi>, msaa_samples: u32) -> Self {
+    pub fn new(graphics_api: Box<dyn GraphicsApi>, requested_samples: u32) -> Self {
+        // Validate the sample count with the graphics API
+        let msaa_samples = graphics_api.validate_sample_count(requested_samples);
+
         log::info!("Creating renderer with {msaa_samples} MSAA samples");
 
         let config = RendererConfig {

@@ -33,6 +33,9 @@ pub trait GraphicsApi: Send + Sync {
     where
         Self: Sized;
 
+    /// Validate and clamp MSAA sample count to supported values
+    fn validate_sample_count(&self, requested_samples: u32) -> u32;
+
     /// Resize the surface
     fn resize(&mut self, width: u32, height: u32);
 
@@ -159,6 +162,28 @@ impl GraphicsApi for WgpuGraphicsApi {
         Self::new_impl(window, width, height).await
     }
 
+    fn validate_sample_count(&self, requested_samples: u32) -> u32 {
+        // MSAA sample counts must be powers of 2 and supported by the hardware
+        // Common supported values are 1, 2, 4, 8, 16
+        let valid_samples = [1, 2, 4, 8, 16];
+
+        // Find the closest valid sample count that doesn't exceed the requested value
+        let clamped = valid_samples
+            .iter()
+            .rev() // Start from highest to find the best match
+            .find(|&&samples| samples <= requested_samples)
+            .copied()
+            .unwrap_or(1); // Default to 1 if no valid value found
+
+        if clamped != requested_samples {
+            log::warn!(
+                "MSAA sample count {requested_samples} is not supported, clamping to {clamped}"
+            );
+        }
+
+        clamped
+    }
+
     fn resize(&mut self, width: u32, height: u32) {
         log::debug!("Resizing surface to {width}x{height}");
         self.surface_size = (width, height);
@@ -192,5 +217,42 @@ impl GraphicsApi for WgpuGraphicsApi {
 
     fn surface_size(&self) -> (u32, u32) {
         self.surface_size
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_sample_count_validation_logic() {
+        // Test the validation logic without requiring a full graphics API instance
+        fn validate_sample_count_test(requested_samples: u32) -> u32 {
+            let valid_samples = [1, 2, 4, 8, 16];
+            valid_samples
+                .iter()
+                .rev()
+                .find(|&&samples| samples <= requested_samples)
+                .copied()
+                .unwrap_or(1)
+        }
+
+        // Test valid sample counts
+        assert_eq!(validate_sample_count_test(1), 1);
+        assert_eq!(validate_sample_count_test(2), 2);
+        assert_eq!(validate_sample_count_test(4), 4);
+        assert_eq!(validate_sample_count_test(8), 8);
+        assert_eq!(validate_sample_count_test(16), 16);
+
+        // Test invalid sample counts (should be clamped to nearest lower valid value)
+        assert_eq!(validate_sample_count_test(3), 2);
+        assert_eq!(validate_sample_count_test(5), 4);
+        assert_eq!(validate_sample_count_test(6), 4);
+        assert_eq!(validate_sample_count_test(7), 4);
+        assert_eq!(validate_sample_count_test(9), 8);
+        assert_eq!(validate_sample_count_test(15), 8);
+        assert_eq!(validate_sample_count_test(17), 16);
+        assert_eq!(validate_sample_count_test(32), 16);
+
+        // Test edge case
+        assert_eq!(validate_sample_count_test(0), 1);
     }
 }
