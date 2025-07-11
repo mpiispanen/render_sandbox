@@ -55,24 +55,19 @@ fn test_forward_renderpass_enabled() {
             let pass_names: Vec<String> = passes.iter().map(|p| p.to_string()).collect();
             assert!(
                 pass_names.iter().any(|name| name == "ForwardPass"),
-                "Should have ForwardPass in execution order, found: {:?}",
-                pass_names
+                "Should have ForwardPass in execution order, found: {pass_names:?}"
             );
 
-            log::info!(
-                "Forward renderpass test passed - found passes: {:?}",
-                pass_names
-            );
+            log::info!("Forward renderpass test passed - found passes: {pass_names:?}");
         }
         Err(e) => {
             // In CI environments without graphics adapters, this is expected
-            log::info!("Graphics API initialization failed (expected in CI): {}", e);
+            log::info!("Graphics API initialization failed (expected in CI): {e}");
             // We still want the test to pass as this is environmental
             assert!(
                 e.to_string().contains("graphics adapter")
                     || e.to_string().contains("AdapterNotFound"),
-                "Expected graphics adapter error, got: {}",
-                e
+                "Expected graphics adapter error, got: {e}"
             );
         }
     }
@@ -122,7 +117,7 @@ fn test_forward_renderpass_execution() {
             );
         }
         Err(e) => {
-            log::info!("Graphics API initialization failed (expected in CI): {}", e);
+            log::info!("Graphics API initialization failed (expected in CI): {e}");
             // Environmental failure is acceptable
         }
     }
@@ -171,7 +166,7 @@ fn test_render_stats_with_forward_pass() {
             );
         }
         Err(e) => {
-            log::info!("Graphics API initialization failed (expected in CI): {}", e);
+            log::info!("Graphics API initialization failed (expected in CI): {e}");
         }
     }
 }
@@ -217,10 +212,7 @@ fn test_forward_renderpass_with_scene_content() {
                 }
                 Err(e) => {
                     // Triangle creation might fail in headless mode, which is acceptable
-                    log::info!(
-                        "Triangle creation failed (acceptable in headless mode): {}",
-                        e
-                    );
+                    log::info!("Triangle creation failed (acceptable in headless mode): {e}");
 
                     // Still test basic rendering with empty scene
                     let render_result = renderer.render(&scene);
@@ -232,7 +224,7 @@ fn test_forward_renderpass_with_scene_content() {
             }
         }
         Err(e) => {
-            log::info!("Graphics API initialization failed (expected in CI): {}", e);
+            log::info!("Graphics API initialization failed (expected in CI): {e}");
         }
     }
 }
