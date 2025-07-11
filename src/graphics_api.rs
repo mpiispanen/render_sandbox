@@ -75,7 +75,7 @@ impl WgpuGraphicsApi {
         });
 
         // Create surface if window is provided (but don't store it)
-        let (surface_format, surface_size, has_surface) = if let Some(window) = window {
+        let (adapter, surface_format, surface_size, has_surface) = if let Some(window) = window {
             let surface = instance
                 .create_surface(window)
                 .map_err(|e| GraphicsError::Other(format!("Failed to create surface: {e}")))?;
@@ -100,14 +100,20 @@ impl WgpuGraphicsApi {
                 .unwrap_or(surface_caps.formats[0]);
 
             // We'll configure the surface later when we have the device
-            (surface_format, (size.width, size.height), true)
+            (adapter, surface_format, (size.width, size.height), true)
         } else {
-            // For headless mode
-            (wgpu::TextureFormat::Rgba8UnormSrgb, (800, 600), false)
-        };
+            // For headless mode, request adapter without surface
+            let adapter = instance
+                .request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::default(),
+                    compatible_surface: None,
+                    force_fallback_adapter: false,
+                })
+                .await
+                .ok_or(GraphicsError::AdapterNotFound)?;
 
-        // Reuse the adapter obtained earlier
-        // No need to request another adapter for headless mode
+            (adapter, wgpu::TextureFormat::Rgba8UnormSrgb, (800, 600), false)
+        };
 
         log::info!("Selected adapter: {:?}", adapter.get_info());
 
