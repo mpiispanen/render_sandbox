@@ -27,6 +27,8 @@ pub trait GraphicsApi: Send + Sync {
     /// Initialize the graphics API
     fn new(
         window: Option<&Window>,
+        width: u32,
+        height: u32,
     ) -> impl std::future::Future<Output = Result<Self, GraphicsError>>
     where
         Self: Sized;
@@ -65,8 +67,12 @@ pub struct WgpuGraphicsApi {
 
 impl WgpuGraphicsApi {
     /// Create a new wgpu graphics API instance
-    pub async fn new_impl(window: Option<&Window>) -> Result<Self, GraphicsError> {
-        log::info!("Initializing wgpu graphics API");
+    pub async fn new_impl(
+        window: Option<&Window>,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, GraphicsError> {
+        log::info!("Initializing wgpu graphics API with resolution {width}x{height}");
 
         // Create instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -102,7 +108,7 @@ impl WgpuGraphicsApi {
             // We'll configure the surface later when we have the device
             (adapter, surface_format, (size.width, size.height), true)
         } else {
-            // For headless mode, request adapter without surface
+            // For headless mode, request adapter without surface, use provided dimensions
             let adapter = instance
                 .request_adapter(&wgpu::RequestAdapterOptions {
                     power_preference: wgpu::PowerPreference::default(),
@@ -115,7 +121,7 @@ impl WgpuGraphicsApi {
             (
                 adapter,
                 wgpu::TextureFormat::Rgba8UnormSrgb,
-                (800, 600),
+                (width, height),
                 false,
             )
         };
@@ -149,8 +155,8 @@ impl WgpuGraphicsApi {
 }
 
 impl GraphicsApi for WgpuGraphicsApi {
-    async fn new(window: Option<&Window>) -> Result<Self, GraphicsError> {
-        Self::new_impl(window).await
+    async fn new(window: Option<&Window>, width: u32, height: u32) -> Result<Self, GraphicsError> {
+        Self::new_impl(window, width, height).await
     }
 
     fn resize(&mut self, width: u32, height: u32) {

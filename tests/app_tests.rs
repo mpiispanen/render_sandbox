@@ -1,22 +1,54 @@
-use render_sandbox::{app_core::Application, engine::EngineError};
+use clap::Parser;
+use render_sandbox::{app_core::Application, engine::EngineError, Args};
 
 #[test]
 fn test_application_headless_mode() {
-    // Test that we can create an application in headless mode
-    let app = Application::new(true, "test_assets/triangle.gltf".to_string());
+    // Test that we can create an application in headless mode with custom arguments
+    let args = Args::parse_from([
+        "render_sandbox",
+        "--headless",
+        "--width",
+        "1024",
+        "--height",
+        "768",
+        "--samples",
+        "4",
+    ]);
+    let app = Application::new(args);
     assert!(app.is_ok(), "Failed to create headless application");
+
+    let app = app.unwrap();
+    assert!(app.is_headless(), "Application should be in headless mode");
+}
+
+#[test]
+fn test_application_with_custom_resolution() {
+    // Test that custom resolution arguments are accepted
+    let args = Args::parse_from([
+        "render_sandbox",
+        "--headless",
+        "--width",
+        "1920",
+        "--height",
+        "1080",
+        "--gltf",
+        "custom_scene.gltf",
+    ]);
+    let app = Application::new(args);
+    assert!(
+        app.is_ok(),
+        "Failed to create application with custom resolution"
+    );
 }
 
 #[test]
 #[ignore] // Skip by default in CI - run with: cargo test -- --ignored
 fn test_application_windowed_mode() {
-    // Test that we can create an application in windowed mode
-    // This test verifies the windowed mode logic works, even if it can't run in test environments
+    // Test that we can create an application in windowed mode with custom resolution
+    let args = Args::parse_from(["render_sandbox", "--width", "800", "--height", "600"]);
 
     // Use panic::catch_unwind to handle the expected threading panic in test environments
-    let result = std::panic::catch_unwind(|| {
-        Application::new(false, "test_assets/triangle.gltf".to_string())
-    });
+    let result = std::panic::catch_unwind(|| Application::new(args));
 
     match result {
         Ok(Ok(application)) => {
@@ -69,8 +101,10 @@ fn test_application_windowed_mode() {
 
 #[test]
 fn test_headless_run() {
-    // Test running the application in headless mode
-    if let Ok(app) = Application::new(true, "test_assets/triangle.gltf".to_string()) {
+    // Test running the application in headless mode with custom settings
+    let args = Args::parse_from(["render_sandbox", "--headless", "--samples", "2"]);
+
+    if let Ok(app) = Application::new(args) {
         let result = app.run();
 
         // In CI environments without graphics drivers, this is expected to fail

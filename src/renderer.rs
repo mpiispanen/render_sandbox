@@ -78,15 +78,20 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    /// Create a new renderer
-    pub fn new(graphics_api: Box<dyn GraphicsApi>) -> Self {
-        log::info!("Creating renderer");
+    /// Create a new renderer with specified MSAA samples
+    pub fn new(graphics_api: Box<dyn GraphicsApi>, msaa_samples: u32) -> Self {
+        log::info!("Creating renderer with {msaa_samples} MSAA samples");
+
+        let config = RendererConfig {
+            msaa_samples,
+            ..Default::default()
+        };
 
         Self {
             graphics_api,
             resource_manager: ResourceManager::new(),
             render_graph: RenderGraph::new(),
-            config: RendererConfig::default(),
+            config,
             stats: RenderStats::default(),
             initialized: false,
         }
