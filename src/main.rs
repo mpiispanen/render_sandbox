@@ -62,7 +62,7 @@ fn main() {
     );
 
     // Create and run the application
-    match Application::new(args.headless) {
+    match Application::new(args.headless, args.gltf_path) {
         Ok(app) => {
             if let Err(e) = app.run() {
                 error!("Application error: {e}");

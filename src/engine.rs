@@ -29,6 +29,7 @@ pub trait Engine: Send + 'static {
     /// Create a new engine instance
     fn new(
         window_handle: Option<&Window>,
+        gltf_path: &str,
     ) -> impl std::future::Future<Output = Result<Self, EngineError>>
     where
         Self: Sized;
@@ -56,7 +57,7 @@ pub struct PlaceholderEngine {
 }
 
 impl Engine for PlaceholderEngine {
-    async fn new(window_handle: Option<&Window>) -> Result<Self, EngineError> {
+    async fn new(window_handle: Option<&Window>, _gltf_path: &str) -> Result<Self, EngineError> {
         log::info!(
             "Creating placeholder engine (headless: {})",
             window_handle.is_none()
@@ -109,7 +110,7 @@ pub struct RealTimeEngine {
 }
 
 impl RealTimeEngine {
-    async fn new_impl(window_handle: Option<&Window>) -> Result<Self, EngineError> {
+    async fn new_impl(window_handle: Option<&Window>, gltf_path: &str) -> Result<Self, EngineError> {
         log::info!(
             "Creating real-time engine (headless: {})",
             window_handle.is_none()
@@ -132,7 +133,6 @@ impl RealTimeEngine {
         let mut scene = Scene::new();
 
         // Try to load a GLTF file if available, otherwise create a GLTF-style test triangle
-        let gltf_path = "test_assets/triangle.gltf";
         let triangle_created = if std::path::Path::new(gltf_path).exists() {
             log::info!("Loading triangle from GLTF file: {gltf_path}");
             match renderer.load_gltf_to_scene(gltf_path, &mut scene) {
@@ -171,8 +171,8 @@ impl RealTimeEngine {
 }
 
 impl Engine for RealTimeEngine {
-    async fn new(window_handle: Option<&Window>) -> Result<Self, EngineError> {
-        Self::new_impl(window_handle).await
+    async fn new(window_handle: Option<&Window>, gltf_path: &str) -> Result<Self, EngineError> {
+        Self::new_impl(window_handle, gltf_path).await
     }
 
     fn resize(&mut self, new_size: PhysicalSize<u32>) {

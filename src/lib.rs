@@ -46,4 +46,8 @@ pub struct Args {
     /// Run in headless mode (no window)
     #[arg(long = "headless")]
     pub headless: bool,
+
+    /// Path to GLTF file to load
+    #[arg(short = 'g', long = "gltf", default_value = "test_assets/triangle.gltf")]
+    pub gltf_path: String,
 }

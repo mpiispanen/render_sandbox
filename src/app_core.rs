@@ -14,12 +14,14 @@ pub struct Application {
     engine: Option<Box<dyn Engine>>,
     should_exit: bool,
     is_headless: bool,
+    gltf_path: String,
 }
 
 impl Application {
     /// Creates a new Application instance
     /// `headless`: If true, no window is created
-    pub fn new(headless: bool) -> Result<Self, EngineError> {
+    /// `gltf_path`: Path to the GLTF file to load
+    pub fn new(headless: bool, gltf_path: String) -> Result<Self, EngineError> {
         info!("Creating application (headless: {headless})");
 
         if headless {
@@ -30,6 +32,7 @@ impl Application {
                 engine: None,
                 should_exit: false,
                 is_headless: true,
+                gltf_path,
             })
         } else {
             // Windowed mode - create window and event loop
@@ -51,6 +54,7 @@ impl Application {
                 engine: None,
                 should_exit: false,
                 is_headless: false,
+                gltf_path,
             })
         }
     }
@@ -60,9 +64,9 @@ impl Application {
         info!("Initializing engine");
 
         let engine = if self.is_headless {
-            Box::new(RealTimeEngine::new(None).await?) as Box<dyn Engine>
+            Box::new(RealTimeEngine::new(None, &self.gltf_path).await?) as Box<dyn Engine>
         } else {
-            Box::new(RealTimeEngine::new(self.window.as_ref()).await?) as Box<dyn Engine>
+            Box::new(RealTimeEngine::new(self.window.as_ref(), &self.gltf_path).await?) as Box<dyn Engine>
         };
 
         self.engine = Some(engine);
