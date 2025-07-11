@@ -38,26 +38,13 @@ impl From<gltf::Error> for GltfError {
 }
 
 /// GLTF loader for converting GLTF files to scene format
-pub struct GltfLoader {
-    resource_manager: *mut ResourceManager,
-    device: *const wgpu::Device,
-}
+pub struct GltfLoader;
 
 impl GltfLoader {
-    /// Create a new GLTF loader
-    ///
-    /// # Safety
-    /// The device and resource_manager pointers must remain valid for the lifetime of this loader
-    pub unsafe fn new(device: *const wgpu::Device, resource_manager: *mut ResourceManager) -> Self {
-        Self {
-            resource_manager,
-            device,
-        }
-    }
-
     /// Load a GLTF file and add its contents to the scene
     pub fn load_gltf<P: AsRef<Path>>(
-        &mut self,
+        device: &wgpu::Device,
+        resource_manager: &mut ResourceManager,
         path: P,
         scene: &mut Scene,
     ) -> Result<(), GltfError> {
@@ -71,7 +58,7 @@ impl GltfLoader {
 
             // Process each root node in the scene
             for node in gltf_scene.nodes() {
-                let scene_node = self.process_node(&node, &buffers)?;
+                let scene_node = Self::process_node(device, resource_manager, &node, &buffers)?;
                 scene.add_node(scene_node);
             }
         }
@@ -82,7 +69,8 @@ impl GltfLoader {
 
     /// Process a GLTF node and convert it to our scene format
     fn process_node(
-        &mut self,
+        device: &wgpu::Device,
+        resource_manager: &mut ResourceManager,
         gltf_node: &gltf::Node,
         buffers: &[gltf::buffer::Data],
     ) -> Result<SceneNode, GltfError> {
@@ -96,14 +84,14 @@ impl GltfLoader {
         };
 
         // Set transform
-        scene_node.transform = self.convert_transform(gltf_node);
+        scene_node.transform = Self::convert_transform(gltf_node);
 
         // Process node content
         if let Some(gltf_mesh) = gltf_node.mesh() {
-            let mesh = self.process_mesh(&gltf_mesh, buffers)?;
+            let mesh = Self::process_mesh(device, resource_manager, &gltf_mesh, buffers)?;
             scene_node.content = Some(NodeContent::Mesh(mesh));
         } else if let Some(gltf_camera) = gltf_node.camera() {
-            let camera = self.process_camera(&gltf_camera)?;
+            let camera = Self::process_camera(&gltf_camera)?;
             scene_node.content = Some(NodeContent::Camera(camera));
         }
         // Note: GLTF lights are extensions, not in core spec, so we'll skip for now
@@ -112,7 +100,7 @@ impl GltfLoader {
     }
 
     /// Convert GLTF transform to our transform format
-    fn convert_transform(&self, gltf_node: &gltf::Node) -> Transform {
+    fn convert_transform(gltf_node: &gltf::Node) -> Transform {
         let (translation, rotation, scale) = gltf_node.transform().decomposed();
 
         Transform {
@@ -124,7 +112,8 @@ impl GltfLoader {
 
     /// Process a GLTF mesh and convert it to our mesh format
     fn process_mesh(
-        &mut self,
+        device: &wgpu::Device,
+        resource_manager: &mut ResourceManager,
         gltf_mesh: &gltf::Mesh,
         buffers: &[gltf::buffer::Data],
     ) -> Result<Mesh, GltfError> {
@@ -157,49 +146,56 @@ impl GltfLoader {
         // Read indices if available
         let indices: Option<Vec<u16>> = reader
             .read_indices()
-            .map(|iter| iter.into_u32().map(|i| i as u16).collect());
+            .map(|iter| {
+                iter.into_u32()
+                    .map(|i| {
+                        if i > u16::MAX as u32 {
+                            return Err(GltfError::ValidationError(format!(
+                                "Index value {i} exceeds maximum u16 value (65535)"
+                            )));
+                        }
+                        Ok(i as u16)
+                    })
+                    .collect::<Result<Vec<u16>, GltfError>>()
+            })
+            .transpose()?;
 
         // Create the mesh using the resource manager
-        unsafe {
-            let device = &*self.device;
-            let resource_manager = &mut *self.resource_manager;
+        // Create vertex buffer
+        let vertex_buffer = resource_manager.create_buffer_init(
+            device,
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("GLTF Vertex Buffer"),
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            },
+        );
 
-            // Create vertex buffer
-            let vertex_buffer = resource_manager.create_buffer_init(
+        // Create index buffer if indices exist
+        let (index_buffer, index_count) = if let Some(ref indices) = indices {
+            let buffer = resource_manager.create_buffer_init(
                 device,
                 &wgpu::util::BufferInitDescriptor {
-                    label: Some("GLTF Vertex Buffer"),
-                    contents: bytemuck::cast_slice(&vertices),
-                    usage: wgpu::BufferUsages::VERTEX,
+                    label: Some("GLTF Index Buffer"),
+                    contents: bytemuck::cast_slice(indices),
+                    usage: wgpu::BufferUsages::INDEX,
                 },
             );
+            (Some(buffer), Some(indices.len() as u32))
+        } else {
+            (None, None)
+        };
 
-            // Create index buffer if indices exist
-            let (index_buffer, index_count) = if let Some(ref indices) = indices {
-                let buffer = resource_manager.create_buffer_init(
-                    device,
-                    &wgpu::util::BufferInitDescriptor {
-                        label: Some("GLTF Index Buffer"),
-                        contents: bytemuck::cast_slice(indices),
-                        usage: wgpu::BufferUsages::INDEX,
-                    },
-                );
-                (Some(buffer), Some(indices.len() as u32))
-            } else {
-                (None, None)
-            };
-
-            Ok(Mesh {
-                vertex_buffer,
-                index_buffer,
-                vertex_count: positions.len() as u32,
-                index_count,
-            })
-        }
+        Ok(Mesh {
+            vertex_buffer,
+            index_buffer,
+            vertex_count: positions.len() as u32,
+            index_count,
+        })
     }
 
     /// Process a GLTF camera and convert it to our camera format
-    fn process_camera(&self, gltf_camera: &gltf::Camera) -> Result<Camera, GltfError> {
+    fn process_camera(gltf_camera: &gltf::Camera) -> Result<Camera, GltfError> {
         log::debug!("Processing GLTF camera: {}", gltf_camera.index());
 
         match gltf_camera.projection() {
@@ -216,7 +212,10 @@ impl GltfLoader {
     }
 
     /// Create a simple test GLTF triangle mesh directly (for testing)
-    pub fn create_test_triangle(&mut self) -> Result<Mesh, GltfError> {
+    pub fn create_test_triangle(
+        device: &wgpu::Device,
+        resource_manager: &mut ResourceManager,
+    ) -> Result<Mesh, GltfError> {
         log::info!("Creating test triangle from GLTF-style data");
 
         // Simple triangle vertices (similar to current test triangle)
@@ -227,26 +226,21 @@ impl GltfLoader {
             0.5, -0.5, 0.0,  // Bottom right
         ];
 
-        unsafe {
-            let device = &*self.device;
-            let resource_manager = &mut *self.resource_manager;
+        let vertex_buffer = resource_manager.create_buffer_init(
+            device,
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("GLTF Test Triangle Vertex Buffer"),
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            },
+        );
 
-            let vertex_buffer = resource_manager.create_buffer_init(
-                device,
-                &wgpu::util::BufferInitDescriptor {
-                    label: Some("GLTF Test Triangle Vertex Buffer"),
-                    contents: bytemuck::cast_slice(&vertices),
-                    usage: wgpu::BufferUsages::VERTEX,
-                },
-            );
-
-            Ok(Mesh {
-                vertex_buffer,
-                index_buffer: None,
-                vertex_count: 3,
-                index_count: None,
-            })
-        }
+        Ok(Mesh {
+            vertex_buffer,
+            index_buffer: None,
+            vertex_count: 3,
+            index_count: None,
+        })
     }
 }
 
