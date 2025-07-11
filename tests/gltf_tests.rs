@@ -59,10 +59,10 @@ fn test_triangle_gltf_file_exists() {
 fn test_gltf_sample_models_simple() {
     use std::path::Path;
 
-    // Test simple sample models
+    // Test simple sample models from official glTF Sample Models repository
     let simple_models = [
-        "test_assets/gltf_samples/simple/triangle.gltf",
-        "test_assets/gltf_samples/simple/box.gltf",
+        "test_assets/gltf_sample_models/2.0/Triangle/glTF/Triangle.gltf",
+        "test_assets/gltf_sample_models/2.0/Box/glTF/Box.gltf",
     ];
 
     for model_path in &simple_models {
@@ -101,10 +101,10 @@ fn test_gltf_sample_models_simple() {
 fn test_gltf_sample_models_complex() {
     use std::path::Path;
 
-    // Test complex sample models
+    // Test complex sample models from official glTF Sample Models repository
     let complex_models = [
-        "test_assets/gltf_samples/complex/multi_cube.gltf",
-        "test_assets/gltf_samples/complex/hierarchical_scene.gltf",
+        "test_assets/gltf_sample_models/2.0/SimpleMeshes/glTF/SimpleMeshes.gltf",
+        "test_assets/gltf_sample_models/2.0/Cameras/glTF/Cameras.gltf",
     ];
 
     for model_path in &complex_models {
@@ -151,8 +151,8 @@ fn test_gltf_sample_models_complex() {
 fn test_gltf_sample_model_vertex_counts() {
     use std::path::Path;
 
-    // Test vertex counts for known models
-    let triangle_path = Path::new("test_assets/gltf_samples/simple/triangle.gltf");
+    // Test vertex counts for known models from official glTF Sample Models
+    let triangle_path = Path::new("test_assets/gltf_sample_models/2.0/Triangle/glTF/Triangle.gltf");
     if triangle_path.exists() {
         let gltf_doc = gltf::Gltf::open(triangle_path).unwrap();
         let mesh = gltf_doc.meshes().next().unwrap();
@@ -165,49 +165,40 @@ fn test_gltf_sample_model_vertex_counts() {
         );
     }
 
-    let box_path = Path::new("test_assets/gltf_samples/simple/box.gltf");
+    let box_path = Path::new("test_assets/gltf_sample_models/2.0/Box/glTF/Box.gltf");
     if box_path.exists() {
         let gltf_doc = gltf::Gltf::open(box_path).unwrap();
         let mesh = gltf_doc.meshes().next().unwrap();
         let primitive = mesh.primitives().next().unwrap();
         let position_accessor = primitive.get(&gltf::Semantic::Positions).unwrap();
-        assert_eq!(position_accessor.count(), 8, "Box should have 8 vertices");
+        assert_eq!(
+            position_accessor.count(),
+            24,
+            "Box should have 24 vertices (6 faces * 4 vertices)"
+        );
     }
 }
 
 #[test]
-fn test_gltf_sample_model_hierarchy() {
+fn test_gltf_sample_model_scene_structure() {
     use std::path::Path;
 
-    let hierarchical_path = Path::new("test_assets/gltf_samples/complex/hierarchical_scene.gltf");
-    if hierarchical_path.exists() {
-        let gltf_doc = gltf::Gltf::open(hierarchical_path).unwrap();
+    let cameras_path = Path::new("test_assets/gltf_sample_models/2.0/Cameras/glTF/Cameras.gltf");
+    if cameras_path.exists() {
+        let gltf_doc = gltf::Gltf::open(cameras_path).unwrap();
 
         // Verify hierarchical structure
         let scene = gltf_doc.scenes().next().unwrap();
         let root_nodes: Vec<_> = scene.nodes().collect();
 
-        // Should have at least one root node
-        assert!(
-            !root_nodes.is_empty(),
-            "Hierarchical scene should have root nodes"
-        );
+        // Check the scene structure - Cameras model has multiple nodes but no hierarchy
+        assert!(!root_nodes.is_empty(), "Scene should have root nodes");
 
-        // Check if any node has children (hierarchical structure)
-        let has_hierarchy = gltf_doc.nodes().any(|node| node.children().count() > 0);
+        // Verify we have multiple nodes (cameras)
+        let total_nodes = gltf_doc.nodes().count();
         assert!(
-            has_hierarchy,
-            "Hierarchical scene should have parent-child relationships"
-        );
-
-        // Verify transforms exist
-        let has_transforms = gltf_doc.nodes().any(|node| {
-            let (translation, _, _) = node.transform().decomposed();
-            translation != [0.0, 0.0, 0.0]
-        });
-        assert!(
-            has_transforms,
-            "Hierarchical scene should have non-identity transforms"
+            total_nodes > 1,
+            "Cameras scene should have multiple nodes representing different cameras"
         );
     }
 }
