@@ -2,6 +2,7 @@ use clap::Parser;
 
 pub mod app_core;
 pub mod engine;
+pub mod gltf_loader;
 pub mod graphics_api;
 pub mod render_graph;
 pub mod renderer;
@@ -45,4 +46,12 @@ pub struct Args {
     /// Run in headless mode (no window)
     #[arg(long = "headless")]
     pub headless: bool,
+
+    /// Path to GLTF file to load
+    #[arg(
+        short = 'g',
+        long = "gltf",
+        default_value = "test_assets/triangle.gltf"
+    )]
+    pub gltf_path: String,
 }

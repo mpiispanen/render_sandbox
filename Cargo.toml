@@ -20,3 +20,4 @@ wgpu = "22.0"
 bytemuck = { version = "1.15", features = ["derive"] }
 cgmath = "0.18"
 futures = "0.3"
+gltf = "1.4"

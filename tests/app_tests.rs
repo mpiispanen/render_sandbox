@@ -3,7 +3,7 @@ use render_sandbox::{app_core::Application, engine::EngineError};
 #[test]
 fn test_application_headless_mode() {
     // Test that we can create an application in headless mode
-    let app = Application::new(true);
+    let app = Application::new(true, "test_assets/triangle.gltf".to_string());
     assert!(app.is_ok(), "Failed to create headless application");
 }
 
@@ -14,7 +14,9 @@ fn test_application_windowed_mode() {
     // This test verifies the windowed mode logic works, even if it can't run in test environments
 
     // Use panic::catch_unwind to handle the expected threading panic in test environments
-    let result = std::panic::catch_unwind(|| Application::new(false));
+    let result = std::panic::catch_unwind(|| {
+        Application::new(false, "test_assets/triangle.gltf".to_string())
+    });
 
     match result {
         Ok(Ok(application)) => {
@@ -68,7 +70,7 @@ fn test_application_windowed_mode() {
 #[test]
 fn test_headless_run() {
     // Test running the application in headless mode
-    if let Ok(app) = Application::new(true) {
+    if let Ok(app) = Application::new(true, "test_assets/triangle.gltf".to_string()) {
         let result = app.run();
 
         // In CI environments without graphics drivers, this is expected to fail

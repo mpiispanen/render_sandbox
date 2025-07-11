@@ -265,6 +265,16 @@ impl Renderer {
         &mut self.resource_manager
     }
 
+    /// Execute a function with access to both device and resource manager
+    /// This allows safe access to both without borrow checker issues
+    pub fn with_device_and_resource_manager<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce(&wgpu::Device, &mut ResourceManager) -> R,
+    {
+        let device = self.graphics_api.device();
+        f(device, &mut self.resource_manager)
+    }
+
     /// Get the render graph
     pub fn render_graph(&self) -> &RenderGraph {
         &self.render_graph
@@ -352,6 +362,45 @@ impl Renderer {
         scene.add_node(mesh_node);
 
         log::info!("Test triangle created successfully");
+        Ok(())
+    }
+
+    /// Load a GLTF file and add its contents to the scene
+    pub fn load_gltf_to_scene<P: AsRef<std::path::Path>>(
+        &mut self,
+        path: P,
+        scene: &mut Scene,
+    ) -> Result<(), RendererError> {
+        log::info!("Loading GLTF file to scene: {}", path.as_ref().display());
+
+        self.with_device_and_resource_manager(|device, resource_manager| {
+            crate::gltf_loader::GltfLoader::load_gltf(device, resource_manager, path, scene)
+        })
+        .map_err(|e| RendererError::Other(format!("GLTF loading failed: {e}")))?;
+
+        log::info!("GLTF file loaded successfully");
+        Ok(())
+    }
+
+    /// Create a test triangle from GLTF-style data and add it to the scene
+    pub fn create_gltf_test_triangle(&mut self, scene: &mut Scene) -> Result<(), RendererError> {
+        log::info!("Creating GLTF-style test triangle");
+
+        let mesh = self
+            .with_device_and_resource_manager(|device, resource_manager| {
+                crate::gltf_loader::GltfLoader::create_test_triangle(device, resource_manager)
+            })
+            .map_err(|e| {
+                RendererError::Other(format!("GLTF test triangle creation failed: {e}"))
+            })?;
+
+        // Create a mesh node
+        let mesh_node = crate::scene::SceneNode::with_name("GltfTestTriangle")
+            .with_content(NodeContent::Mesh(mesh));
+
+        scene.add_node(mesh_node);
+
+        log::info!("GLTF-style test triangle created successfully");
         Ok(())
     }
 }
