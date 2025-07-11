@@ -1,3 +1,6 @@
+use crate::graphics_api::{GraphicsApi, WgpuGraphicsApi};
+use crate::renderer::Renderer;
+use crate::scene::Scene;
 use winit::{dpi::PhysicalSize, event::WindowEvent, window::Window};
 
 /// Error types for engine operations
@@ -24,7 +27,9 @@ impl std::error::Error for EngineError {}
 /// Engine trait for rendering abstraction
 pub trait Engine: Send + 'static {
     /// Create a new engine instance
-    fn new(window_handle: Option<&Window>) -> Result<Self, EngineError>
+    fn new(
+        window_handle: Option<&Window>,
+    ) -> impl std::future::Future<Output = Result<Self, EngineError>>
     where
         Self: Sized;
 
@@ -51,7 +56,7 @@ pub struct PlaceholderEngine {
 }
 
 impl Engine for PlaceholderEngine {
-    fn new(window_handle: Option<&Window>) -> Result<Self, EngineError> {
+    async fn new(window_handle: Option<&Window>) -> Result<Self, EngineError> {
         log::info!(
             "Creating placeholder engine (headless: {})",
             window_handle.is_none()
@@ -89,6 +94,106 @@ impl Engine for PlaceholderEngine {
             Some(vec![
                 255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
             ])
+        } else {
+            None
+        }
+    }
+}
+
+/// Real-time rendering engine implementation
+pub struct RealTimeEngine {
+    renderer: Renderer,
+    scene: Scene,
+    is_headless: bool,
+    frame_count: u32,
+}
+
+impl RealTimeEngine {
+    async fn new_impl(window_handle: Option<&Window>) -> Result<Self, EngineError> {
+        log::info!(
+            "Creating real-time engine (headless: {})",
+            window_handle.is_none()
+        );
+
+        // Initialize graphics API
+        let graphics_api = WgpuGraphicsApi::new(window_handle).await.map_err(|e| {
+            EngineError::InitializationError(format!("Failed to create graphics API: {e}"))
+        })?;
+
+        // Create renderer
+        let mut renderer = Renderer::new(Box::new(graphics_api));
+
+        // Initialize renderer
+        renderer.initialize().map_err(|e| {
+            EngineError::InitializationError(format!("Failed to initialize renderer: {e}"))
+        })?;
+
+        // Create scene
+        let mut scene = Scene::new();
+
+        // Add a test triangle for demonstration
+        renderer.create_test_triangle(&mut scene).map_err(|e| {
+            EngineError::InitializationError(format!("Failed to create test triangle: {e}"))
+        })?;
+
+        Ok(RealTimeEngine {
+            renderer,
+            scene,
+            is_headless: window_handle.is_none(),
+            frame_count: 0,
+        })
+    }
+}
+
+impl Engine for RealTimeEngine {
+    async fn new(window_handle: Option<&Window>) -> Result<Self, EngineError> {
+        Self::new_impl(window_handle).await
+    }
+
+    fn resize(&mut self, new_size: PhysicalSize<u32>) {
+        log::debug!(
+            "Real-time engine resize to {}x{}",
+            new_size.width,
+            new_size.height
+        );
+        if let Err(e) = self.renderer.resize(new_size.width, new_size.height) {
+            log::error!("Failed to resize renderer: {e}");
+        }
+    }
+
+    fn update(&mut self) {
+        // Update scene
+        self.scene.update(0.016); // Assuming 60 FPS
+        self.frame_count += 1;
+    }
+
+    fn render(&mut self) -> Result<(), EngineError> {
+        self.renderer
+            .render(&self.scene)
+            .map_err(|e| EngineError::RenderingError(format!("Render failed: {e}")))?;
+
+        if self.frame_count % 60 == 0 {
+            let stats = self.renderer.get_stats();
+            log::debug!(
+                "Rendered {} frames, {} passes",
+                stats.frame_count,
+                stats.render_passes
+            );
+        }
+
+        Ok(())
+    }
+
+    fn handle_input(&mut self, event: &WindowEvent) {
+        log::debug!("Real-time engine handling input: {event:?}");
+        // Handle input events for camera movement, object interaction, etc.
+    }
+
+    fn get_rendered_frame_data(&self) -> Option<Vec<u8>> {
+        if self.is_headless {
+            // In a real implementation, this would capture the rendered frame
+            // For now, return placeholder data
+            Some(vec![128; 800 * 600 * 4]) // Gray image
         } else {
             None
         }
