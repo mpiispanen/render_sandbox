@@ -124,10 +124,12 @@ impl Renderer {
         self.render_graph.add_pass(Box::new(clear_pass));
 
         // Forward render pass - use actual ForwardRenderPass instead of placeholder
+        let (width, height) = self.graphics_api.surface_size();
         let forward_pass = ForwardRenderPass::new("ForwardPass")
             .with_resource("BackBuffer", ResourceUsage::ReadWrite)
             .with_resource("DepthBuffer", ResourceUsage::ReadWrite)
-            .with_clear_color([0.1, 0.2, 0.3, 1.0]); // Dark blue background
+            .with_clear_color([0.1, 0.2, 0.3, 1.0]) // Dark blue background
+            .with_resolution(width, height);
         self.render_graph.add_pass(Box::new(forward_pass));
 
         // Compile the render graph

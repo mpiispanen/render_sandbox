@@ -393,6 +393,7 @@ pub struct ForwardRenderPass {
     id: PassId,
     resources: Vec<ResourceDeclaration>,
     clear_color: [f64; 4],
+    resolution: (u32, u32),
 }
 
 impl ForwardRenderPass {
@@ -401,6 +402,7 @@ impl ForwardRenderPass {
             id: PassId::new(name),
             resources: vec![],
             clear_color: [0.0, 0.0, 0.0, 1.0],
+            resolution: (800, 600), // Default resolution
         }
     }
 
@@ -414,6 +416,11 @@ impl ForwardRenderPass {
 
     pub fn with_clear_color(mut self, color: [f64; 4]) -> Self {
         self.clear_color = color;
+        self
+    }
+
+    pub fn with_resolution(mut self, width: u32, height: u32) -> Self {
+        self.resolution = (width, height);
         self
     }
 }
@@ -441,8 +448,8 @@ impl RenderPass for ForwardRenderPass {
         let render_texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Forward Render Target"),
             size: wgpu::Extent3d {
-                width: 800,
-                height: 600,
+                width: self.resolution.0,
+                height: self.resolution.1,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
