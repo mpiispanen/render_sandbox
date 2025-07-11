@@ -1,5 +1,7 @@
 use crate::graphics_api::{GraphicsApi, GraphicsError};
-use crate::render_graph::{PlaceholderPass, RenderGraph, RenderGraphError, ResourceUsage};
+use crate::render_graph::{
+    ForwardRenderPass, PlaceholderPass, RenderGraph, RenderGraphError, ResourceUsage,
+};
 use crate::resource_manager::ResourceManager;
 use crate::scene::{NodeContent, Scene};
 
@@ -121,10 +123,11 @@ impl Renderer {
             PlaceholderPass::new("ClearPass").with_resource("BackBuffer", ResourceUsage::Write);
         self.render_graph.add_pass(Box::new(clear_pass));
 
-        // Forward render pass
-        let forward_pass = PlaceholderPass::new("ForwardPass")
+        // Forward render pass - use actual ForwardRenderPass instead of placeholder
+        let forward_pass = ForwardRenderPass::new("ForwardPass")
             .with_resource("BackBuffer", ResourceUsage::ReadWrite)
-            .with_resource("DepthBuffer", ResourceUsage::ReadWrite);
+            .with_resource("DepthBuffer", ResourceUsage::ReadWrite)
+            .with_clear_color([0.1, 0.2, 0.3, 1.0]); // Dark blue background
         self.render_graph.add_pass(Box::new(forward_pass));
 
         // Compile the render graph

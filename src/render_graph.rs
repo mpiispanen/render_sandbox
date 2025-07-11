@@ -387,3 +387,99 @@ impl RenderPass for PlaceholderPass {
         Ok(())
     }
 }
+
+/// A simple forward renderer pass that renders meshes
+pub struct ForwardRenderPass {
+    id: PassId,
+    resources: Vec<ResourceDeclaration>,
+    clear_color: [f64; 4],
+}
+
+impl ForwardRenderPass {
+    pub fn new(name: &str) -> Self {
+        Self {
+            id: PassId::new(name),
+            resources: vec![],
+            clear_color: [0.0, 0.0, 0.0, 1.0],
+        }
+    }
+
+    pub fn with_resource(mut self, resource_id: &str, usage: ResourceUsage) -> Self {
+        self.resources.push(ResourceDeclaration {
+            id: ResourceId::new(resource_id),
+            usage,
+        });
+        self
+    }
+
+    pub fn with_clear_color(mut self, color: [f64; 4]) -> Self {
+        self.clear_color = color;
+        self
+    }
+}
+
+impl RenderPass for ForwardRenderPass {
+    fn id(&self) -> PassId {
+        self.id.clone()
+    }
+
+    fn resources(&self) -> Vec<ResourceDeclaration> {
+        self.resources.clone()
+    }
+
+    fn execute(
+        &self,
+        device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+        _resource_manager: &ResourceManager,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<(), RenderGraphError> {
+        log::debug!("Executing forward render pass: {}", self.id);
+
+        // For now, create a simple offscreen texture to render to
+        // In a full implementation, this would use the actual render targets
+        let render_texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Forward Render Target"),
+            size: wgpu::Extent3d {
+                width: 800,
+                height: 600,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+
+        let render_view = render_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        // Create a render pass that clears the screen
+        let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Forward Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &render_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: self.clear_color[0],
+                        g: self.clear_color[1],
+                        b: self.clear_color[2],
+                        a: self.clear_color[3],
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+
+        // For now, just clear the render target
+        // TODO: Actual mesh rendering would happen here
+        log::debug!("Forward render pass executed with clear");
+
+        Ok(())
+    }
+}
