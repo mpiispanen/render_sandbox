@@ -1,4 +1,5 @@
 use crate::engine::{Engine, EngineError, RealTimeEngine};
+use crate::Args;
 use log::{debug, error, info, warn};
 use winit::{
     dpi::PhysicalSize,
@@ -13,26 +14,23 @@ pub struct Application {
     event_loop: Option<EventLoop<()>>,
     engine: Option<Box<dyn Engine>>,
     should_exit: bool,
-    is_headless: bool,
-    gltf_path: String,
+    args: Args,
 }
 
 impl Application {
     /// Creates a new Application instance
-    /// `headless`: If true, no window is created
-    /// `gltf_path`: Path to the GLTF file to load
-    pub fn new(headless: bool, gltf_path: String) -> Result<Self, EngineError> {
-        info!("Creating application (headless: {headless})");
+    /// `args`: Command line arguments containing all configuration
+    pub fn new(args: Args) -> Result<Self, EngineError> {
+        info!("Creating application (headless: {})", args.headless);
 
-        if headless {
+        if args.headless {
             // Headless mode - no window or event loop
             Ok(Application {
                 window: None,
                 event_loop: None,
                 engine: None,
                 should_exit: false,
-                is_headless: true,
-                gltf_path,
+                args,
             })
         } else {
             // Windowed mode - create window and event loop
@@ -42,7 +40,7 @@ impl Application {
 
             let window = WindowBuilder::new()
                 .with_title("Render Sandbox")
-                .with_inner_size(PhysicalSize::new(800, 600))
+                .with_inner_size(PhysicalSize::new(args.width, args.height))
                 .build(&event_loop)
                 .map_err(|e| {
                     EngineError::InitializationError(format!("Failed to create window: {e}"))
@@ -53,8 +51,7 @@ impl Application {
                 event_loop: Some(event_loop),
                 engine: None,
                 should_exit: false,
-                is_headless: false,
-                gltf_path,
+                args,
             })
         }
     }
@@ -63,10 +60,10 @@ impl Application {
     async fn initialize_engine(&mut self) -> Result<(), EngineError> {
         info!("Initializing engine");
 
-        let engine = if self.is_headless {
-            Box::new(RealTimeEngine::new(None, &self.gltf_path).await?) as Box<dyn Engine>
+        let engine = if self.args.headless {
+            Box::new(RealTimeEngine::new(None, &self.args).await?) as Box<dyn Engine>
         } else {
-            Box::new(RealTimeEngine::new(self.window.as_ref(), &self.gltf_path).await?)
+            Box::new(RealTimeEngine::new(self.window.as_ref(), &self.args).await?)
                 as Box<dyn Engine>
         };
 
@@ -81,7 +78,7 @@ impl Application {
         // Initialize engine in a blocking way
         futures::executor::block_on(self.initialize_engine())?;
 
-        if self.is_headless {
+        if self.args.headless {
             info!("Starting headless mode");
             let frame_data = self.run_headless(Some(10))?; // Render 10 frames by default
             if let Some(data) = frame_data {
@@ -222,7 +219,7 @@ impl Application {
 
     /// Returns whether the application is in headless mode
     pub fn is_headless(&self) -> bool {
-        self.is_headless
+        self.args.headless
     }
 
     /// Returns whether the application has a window

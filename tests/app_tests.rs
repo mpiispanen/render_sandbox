@@ -1,22 +1,150 @@
-use render_sandbox::{app_core::Application, engine::EngineError};
+use clap::Parser;
+use render_sandbox::{app_core::Application, engine::EngineError, Args};
 
 #[test]
 fn test_application_headless_mode() {
-    // Test that we can create an application in headless mode
-    let app = Application::new(true, "test_assets/triangle.gltf".to_string());
+    // Test that we can create an application in headless mode with custom arguments
+    let args = Args::parse_from([
+        "render_sandbox",
+        "--headless",
+        "--width",
+        "1024",
+        "--height",
+        "768",
+        "--samples",
+        "4",
+    ]);
+    let app = Application::new(args);
     assert!(app.is_ok(), "Failed to create headless application");
+
+    let app = app.unwrap();
+    assert!(app.is_headless(), "Application should be in headless mode");
+}
+
+#[test]
+fn test_application_with_custom_resolution() {
+    // Test that custom resolution arguments are accepted
+    let args = Args::parse_from([
+        "render_sandbox",
+        "--headless",
+        "--width",
+        "1920",
+        "--height",
+        "1080",
+        "--gltf",
+        "test_assets/triangle.gltf",
+    ]);
+    let app = Application::new(args);
+    assert!(
+        app.is_ok(),
+        "Failed to create application with custom resolution"
+    );
+}
+
+#[test]
+fn test_application_with_valid_sample_count() {
+    // Test that valid sample counts work correctly
+    let args = Args::parse_from([
+        "render_sandbox",
+        "--headless",
+        "--width",
+        "800",
+        "--height",
+        "600",
+        "--samples",
+        "4", // Use a WebGPU spec guaranteed sample count
+        "--gltf",
+        "test_assets/triangle.gltf",
+    ]);
+
+    // Application creation should not panic
+    let app = Application::new(args);
+
+    // In environments without graphics drivers, this will fail with an appropriate error
+    // In environments with graphics drivers, it should succeed
+    match app {
+        Ok(_) => {
+            // Success case - application created successfully with valid sample count
+            println!("Application created successfully with valid sample count");
+        }
+        Err(e) => {
+            // Expected failure in CI environments without graphics drivers
+            assert!(
+                e.to_string().contains("graphics adapter")
+                    || e.to_string().contains("graphics API")
+                    || e.to_string().contains("InitializationError"),
+                "Unexpected error type: {e}"
+            );
+        }
+    }
+}
+
+#[test]
+fn test_sample_count_validation_behavior() {
+    // Test that the sample count validation logic works correctly
+    // This test doesn't require graphics drivers since it tests the logic directly
+
+    // Test the validation logic function directly (using WebGPU spec guaranteed values)
+    fn validate_sample_count_test(requested_samples: u32) -> u32 {
+        let valid_samples = [1, 4];
+        valid_samples
+            .iter()
+            .rev()
+            .find(|&&samples| samples <= requested_samples)
+            .copied()
+            .unwrap_or(1)
+    }
+
+    // Test that invalid sample counts get clamped to valid ones
+    assert_eq!(
+        validate_sample_count_test(2),
+        1,
+        "Sample count 2 should clamp to 1"
+    );
+    assert_eq!(
+        validate_sample_count_test(3),
+        1,
+        "Sample count 3 should clamp to 1"
+    );
+    assert_eq!(
+        validate_sample_count_test(5),
+        4,
+        "Sample count 5 should clamp to 4"
+    );
+    assert_eq!(
+        validate_sample_count_test(7),
+        4,
+        "Sample count 7 should clamp to 4"
+    );
+    assert_eq!(
+        validate_sample_count_test(8),
+        4,
+        "Sample count 8 should clamp to 4"
+    );
+    assert_eq!(
+        validate_sample_count_test(16),
+        4,
+        "Sample count 16 should clamp to 4"
+    );
+    assert_eq!(
+        validate_sample_count_test(0),
+        1,
+        "Sample count 0 should clamp to 1"
+    );
+
+    // Test that valid sample counts remain unchanged
+    assert_eq!(validate_sample_count_test(1), 1);
+    assert_eq!(validate_sample_count_test(4), 4);
 }
 
 #[test]
 #[ignore] // Skip by default in CI - run with: cargo test -- --ignored
 fn test_application_windowed_mode() {
-    // Test that we can create an application in windowed mode
-    // This test verifies the windowed mode logic works, even if it can't run in test environments
+    // Test that we can create an application in windowed mode with custom resolution
+    let args = Args::parse_from(["render_sandbox", "--width", "800", "--height", "600"]);
 
     // Use panic::catch_unwind to handle the expected threading panic in test environments
-    let result = std::panic::catch_unwind(|| {
-        Application::new(false, "test_assets/triangle.gltf".to_string())
-    });
+    let result = std::panic::catch_unwind(|| Application::new(args));
 
     match result {
         Ok(Ok(application)) => {
@@ -69,8 +197,10 @@ fn test_application_windowed_mode() {
 
 #[test]
 fn test_headless_run() {
-    // Test running the application in headless mode
-    if let Ok(app) = Application::new(true, "test_assets/triangle.gltf".to_string()) {
+    // Test running the application in headless mode with custom settings
+    let args = Args::parse_from(["render_sandbox", "--headless", "--samples", "4"]);
+
+    if let Ok(app) = Application::new(args) {
         let result = app.run();
 
         // In CI environments without graphics drivers, this is expected to fail

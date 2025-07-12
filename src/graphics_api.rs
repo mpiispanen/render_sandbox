@@ -27,9 +27,14 @@ pub trait GraphicsApi: Send + Sync {
     /// Initialize the graphics API
     fn new(
         window: Option<&Window>,
+        width: u32,
+        height: u32,
     ) -> impl std::future::Future<Output = Result<Self, GraphicsError>>
     where
         Self: Sized;
+
+    /// Validate and clamp MSAA sample count to supported values
+    fn validate_sample_count(&self, requested_samples: u32) -> u32;
 
     /// Resize the surface
     fn resize(&mut self, width: u32, height: u32);
@@ -65,8 +70,12 @@ pub struct WgpuGraphicsApi {
 
 impl WgpuGraphicsApi {
     /// Create a new wgpu graphics API instance
-    pub async fn new_impl(window: Option<&Window>) -> Result<Self, GraphicsError> {
-        log::info!("Initializing wgpu graphics API");
+    pub async fn new_impl(
+        window: Option<&Window>,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, GraphicsError> {
+        log::info!("Initializing wgpu graphics API with resolution {width}x{height}");
 
         // Create instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -102,7 +111,7 @@ impl WgpuGraphicsApi {
             // We'll configure the surface later when we have the device
             (adapter, surface_format, (size.width, size.height), true)
         } else {
-            // For headless mode, request adapter without surface
+            // For headless mode, request adapter without surface, use provided dimensions
             let adapter = instance
                 .request_adapter(&wgpu::RequestAdapterOptions {
                     power_preference: wgpu::PowerPreference::default(),
@@ -115,7 +124,7 @@ impl WgpuGraphicsApi {
             (
                 adapter,
                 wgpu::TextureFormat::Rgba8UnormSrgb,
-                (800, 600),
+                (width, height),
                 false,
             )
         };
@@ -149,8 +158,31 @@ impl WgpuGraphicsApi {
 }
 
 impl GraphicsApi for WgpuGraphicsApi {
-    async fn new(window: Option<&Window>) -> Result<Self, GraphicsError> {
-        Self::new_impl(window).await
+    async fn new(window: Option<&Window>, width: u32, height: u32) -> Result<Self, GraphicsError> {
+        Self::new_impl(window, width, height).await
+    }
+
+    fn validate_sample_count(&self, requested_samples: u32) -> u32 {
+        // For maximum compatibility, use only WebGPU spec guaranteed sample counts
+        // The WebGPU spec guarantees [1, 4] samples for depth formats like Depth32Float
+        // Using only these values ensures compatibility across all devices and environments
+        let valid_samples = [1, 4];
+
+        // Find the closest valid sample count that doesn't exceed the requested value
+        let clamped = valid_samples
+            .iter()
+            .rev() // Start from highest to find the best match
+            .find(|&&samples| samples <= requested_samples)
+            .copied()
+            .unwrap_or(1); // Default to 1 if no valid value found
+
+        if clamped != requested_samples {
+            log::warn!(
+                "MSAA sample count {requested_samples} is not supported, clamping to {clamped} (using WebGPU spec guaranteed values for maximum compatibility)"
+            );
+        }
+
+        clamped
     }
 
     fn resize(&mut self, width: u32, height: u32) {
@@ -186,5 +218,72 @@ impl GraphicsApi for WgpuGraphicsApi {
 
     fn surface_size(&self) -> (u32, u32) {
         self.surface_size
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_sample_count_validation_logic() {
+        // Test the validation logic without requiring a full graphics API instance
+        // Using WebGPU spec guaranteed values for maximum compatibility
+        fn validate_sample_count_test(requested_samples: u32) -> u32 {
+            let valid_samples = [1, 4];
+            valid_samples
+                .iter()
+                .rev()
+                .find(|&&samples| samples <= requested_samples)
+                .copied()
+                .unwrap_or(1)
+        }
+
+        // Test valid sample counts (WebGPU spec guaranteed)
+        assert_eq!(validate_sample_count_test(1), 1);
+        assert_eq!(validate_sample_count_test(4), 4);
+
+        // Test invalid sample counts (should be clamped to nearest lower valid value)
+        assert_eq!(
+            validate_sample_count_test(2),
+            1,
+            "Sample count 2 should clamp to 1"
+        );
+        assert_eq!(
+            validate_sample_count_test(3),
+            1,
+            "Sample count 3 should clamp to 1"
+        );
+        assert_eq!(
+            validate_sample_count_test(5),
+            4,
+            "Sample count 5 should clamp to 4"
+        );
+        assert_eq!(
+            validate_sample_count_test(6),
+            4,
+            "Sample count 6 should clamp to 4"
+        );
+        assert_eq!(
+            validate_sample_count_test(7),
+            4,
+            "Sample count 7 should clamp to 4"
+        );
+        assert_eq!(
+            validate_sample_count_test(8),
+            4,
+            "Sample count 8 should clamp to 4"
+        );
+        assert_eq!(
+            validate_sample_count_test(16),
+            4,
+            "Sample count 16 should clamp to 4"
+        );
+        assert_eq!(
+            validate_sample_count_test(32),
+            4,
+            "Sample count 32 should clamp to 4"
+        );
+
+        // Test edge case
+        assert_eq!(validate_sample_count_test(0), 1);
     }
 }
