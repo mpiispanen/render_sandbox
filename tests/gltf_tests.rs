@@ -69,20 +69,18 @@ fn test_gltf_sample_models_simple() {
         let path = Path::new(model_path);
         if path.exists() {
             let gltf_result = gltf::Gltf::open(path);
-            assert!(gltf_result.is_ok(), "Should be able to load {}", model_path);
+            assert!(gltf_result.is_ok(), "Should be able to load {model_path}");
 
             let gltf_doc = gltf_result.unwrap();
 
             // Verify basic structure
             assert!(
-                !gltf_doc.meshes().next().is_none(),
-                "Model {} should have at least one mesh",
-                model_path
+                gltf_doc.meshes().next().is_some(),
+                "Model {model_path} should have at least one mesh"
             );
             assert!(
-                !gltf_doc.scenes().next().is_none(),
-                "Model {} should have at least one scene",
-                model_path
+                gltf_doc.scenes().next().is_some(),
+                "Model {model_path} should have at least one scene"
             );
 
             // Verify mesh has position attributes
@@ -90,8 +88,7 @@ fn test_gltf_sample_models_simple() {
             let primitive = mesh.primitives().next().unwrap();
             assert!(
                 primitive.get(&gltf::Semantic::Positions).is_some(),
-                "Model {} should have position attributes",
-                model_path
+                "Model {model_path} should have position attributes"
             );
         }
     }
@@ -111,20 +108,18 @@ fn test_gltf_sample_models_complex() {
         let path = Path::new(model_path);
         if path.exists() {
             let gltf_result = gltf::Gltf::open(path);
-            assert!(gltf_result.is_ok(), "Should be able to load {}", model_path);
+            assert!(gltf_result.is_ok(), "Should be able to load {model_path}");
 
             let gltf_doc = gltf_result.unwrap();
 
             // Verify basic structure
             assert!(
-                !gltf_doc.meshes().next().is_none(),
-                "Model {} should have at least one mesh",
-                model_path
+                gltf_doc.meshes().next().is_some(),
+                "Model {model_path} should have at least one mesh"
             );
             assert!(
-                !gltf_doc.scenes().next().is_none(),
-                "Model {} should have at least one scene",
-                model_path
+                gltf_doc.scenes().next().is_some(),
+                "Model {model_path} should have at least one scene"
             );
 
             // Complex models should have multiple objects or hierarchical structure
@@ -132,16 +127,14 @@ fn test_gltf_sample_models_complex() {
             let node_count = scene.nodes().count();
             assert!(
                 node_count >= 1,
-                "Complex model {} should have nodes",
-                model_path
+                "Complex model {model_path} should have nodes"
             );
 
             // Count total meshes - complex models should have multiple meshes or hierarchical nodes
             let total_meshes = gltf_doc.meshes().count();
             assert!(
                 total_meshes >= 1,
-                "Complex model {} should have meshes",
-                model_path
+                "Complex model {model_path} should have meshes"
             );
         }
     }

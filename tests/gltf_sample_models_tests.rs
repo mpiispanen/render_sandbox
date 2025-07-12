@@ -37,18 +37,17 @@ mod gltf_sample_models_tests {
         for (path_str, name, expected_meshes, expected_first_mesh_vertices) in test_cases {
             let path = Path::new(path_str);
             if path.exists() {
-                println!("Testing GLTF parsing for: {}", name);
+                println!("Testing GLTF parsing for: {name}");
 
                 // Use the gltf crate directly to parse and validate structure
-                let (gltf, _buffers, _images) =
-                    gltf::import(path).expect(&format!("Should be able to import {}", name));
+                let (gltf, _buffers, _images) = gltf::import(path)
+                    .unwrap_or_else(|_| panic!("Should be able to import {name}"));
 
                 // Verify mesh count
                 let mesh_count = gltf.meshes().count();
                 assert_eq!(
                     mesh_count, expected_meshes,
-                    "{} should have {} meshes",
-                    name, expected_meshes
+                    "{name} should have {expected_meshes} meshes"
                 );
 
                 // Verify first mesh vertex count
@@ -59,10 +58,7 @@ mod gltf_sample_models_tests {
                             let vertex_count = positions.count();
                             assert!(
                                 vertex_count >= expected_first_mesh_vertices,
-                                "{} first mesh should have at least {} vertices, found {}",
-                                name,
-                                expected_first_mesh_vertices,
-                                vertex_count
+                                "{name} first mesh should have at least {expected_first_mesh_vertices} vertices, found {vertex_count}"
                             );
                         }
                     }
@@ -70,11 +66,11 @@ mod gltf_sample_models_tests {
 
                 // Verify scene structure
                 let scene_count = gltf.scenes().count();
-                assert!(scene_count >= 1, "{} should have at least one scene", name);
+                assert!(scene_count >= 1, "{name} should have at least one scene");
 
-                println!("✓ {} parsed successfully", name);
+                println!("✓ {name} parsed successfully");
             } else {
-                println!("⚠ Sample model {} not found, skipping", name);
+                println!("⚠ Sample model {name} not found, skipping");
             }
         }
     }
@@ -110,15 +106,10 @@ mod gltf_sample_models_tests {
 
             assert!(
                 complex_nodes > simple_nodes,
-                "Complex model should have more nodes ({}) than simple model ({})",
-                complex_nodes,
-                simple_nodes
+                "Complex model should have more nodes ({complex_nodes}) than simple model ({simple_nodes})"
             );
 
-            println!(
-                "Complexity validation: {} nodes < {} nodes ✓",
-                simple_nodes, complex_nodes
-            );
+            println!("Complexity validation: {simple_nodes} nodes < {complex_nodes} nodes ✓");
         }
     }
 
@@ -180,7 +171,7 @@ mod gltf_sample_models_tests {
                     _ => {}
                 }
 
-                println!("✓ Feature '{}' validated for {}", feature_name, path_str);
+                println!("✓ Feature '{feature_name}' validated for {path_str}");
             }
         }
     }

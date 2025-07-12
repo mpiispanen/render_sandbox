@@ -138,14 +138,10 @@ fn test_gltf_sample_models_structure_validation() {
     for (model_path, model_name, expected_meshes, expected_min_vertices) in sample_models {
         let path = Path::new(model_path);
         if path.exists() {
-            log::info!("Testing sample model structure: {}", model_name);
+            log::info!("Testing sample model structure: {model_name}");
 
             let gltf_result = gltf::Gltf::open(path);
-            assert!(
-                gltf_result.is_ok(),
-                "Should load {} successfully",
-                model_name
-            );
+            assert!(gltf_result.is_ok(), "Should load {model_name} successfully");
 
             let gltf_doc = gltf_result.unwrap();
 
@@ -153,8 +149,7 @@ fn test_gltf_sample_models_structure_validation() {
             let mesh_count = gltf_doc.meshes().count();
             assert_eq!(
                 mesh_count, expected_meshes,
-                "Model {} should have {} meshes, found {}",
-                model_name, expected_meshes, mesh_count
+                "Model {model_name} should have {expected_meshes} meshes, found {mesh_count}"
             );
 
             // Verify vertex count in first mesh
@@ -163,17 +158,15 @@ fn test_gltf_sample_models_structure_validation() {
                     if let Some(accessor) = primitive.get(&gltf::Semantic::Positions) {
                         assert!(
                             accessor.count() >= expected_min_vertices,
-                            "Model {} should have at least {} vertices in first mesh",
-                            model_name,
-                            expected_min_vertices
+                            "Model {model_name} should have at least {expected_min_vertices} vertices in first mesh"
                         );
                     }
                 }
             }
 
-            log::info!("Sample model {} structure validation passed", model_name);
+            log::info!("Sample model {model_name} structure validation passed");
         } else {
-            log::warn!("Sample model {} not found, skipping test", model_name);
+            log::warn!("Sample model {model_name} not found, skipping test");
         }
     }
 }
@@ -242,9 +235,7 @@ fn test_gltf_sample_models_comparison() {
         );
 
         log::info!(
-            "Sample model comparison test passed - triangle: {} vertices, box: {} vertices",
-            triangle_vertices,
-            box_vertices
+            "Sample model comparison test passed - triangle: {triangle_vertices} vertices, box: {box_vertices} vertices"
         );
     }
 }
