@@ -52,7 +52,7 @@ fn test_application_with_valid_sample_count() {
         "--height",
         "600",
         "--samples",
-        "2", // Use a valid sample count
+        "4", // Use a WebGPU spec guaranteed sample count
         "--gltf",
         "test_assets/triangle.gltf",
     ]);
@@ -84,9 +84,9 @@ fn test_sample_count_validation_behavior() {
     // Test that the sample count validation logic works correctly
     // This test doesn't require graphics drivers since it tests the logic directly
 
-    // Test the validation logic function directly
+    // Test the validation logic function directly (using WebGPU spec guaranteed values)
     fn validate_sample_count_test(requested_samples: u32) -> u32 {
-        let valid_samples = [1, 2, 4, 8, 16];
+        let valid_samples = [1, 4];
         valid_samples
             .iter()
             .rev()
@@ -97,9 +97,14 @@ fn test_sample_count_validation_behavior() {
 
     // Test that invalid sample counts get clamped to valid ones
     assert_eq!(
+        validate_sample_count_test(2),
+        1,
+        "Sample count 2 should clamp to 1"
+    );
+    assert_eq!(
         validate_sample_count_test(3),
-        2,
-        "Sample count 3 should clamp to 2"
+        1,
+        "Sample count 3 should clamp to 1"
     );
     assert_eq!(
         validate_sample_count_test(5),
@@ -112,14 +117,14 @@ fn test_sample_count_validation_behavior() {
         "Sample count 7 should clamp to 4"
     );
     assert_eq!(
-        validate_sample_count_test(10),
-        8,
-        "Sample count 10 should clamp to 8"
+        validate_sample_count_test(8),
+        4,
+        "Sample count 8 should clamp to 4"
     );
     assert_eq!(
-        validate_sample_count_test(20),
-        16,
-        "Sample count 20 should clamp to 16"
+        validate_sample_count_test(16),
+        4,
+        "Sample count 16 should clamp to 4"
     );
     assert_eq!(
         validate_sample_count_test(0),
@@ -129,10 +134,7 @@ fn test_sample_count_validation_behavior() {
 
     // Test that valid sample counts remain unchanged
     assert_eq!(validate_sample_count_test(1), 1);
-    assert_eq!(validate_sample_count_test(2), 2);
     assert_eq!(validate_sample_count_test(4), 4);
-    assert_eq!(validate_sample_count_test(8), 8);
-    assert_eq!(validate_sample_count_test(16), 16);
 }
 
 #[test]
@@ -196,7 +198,7 @@ fn test_application_windowed_mode() {
 #[test]
 fn test_headless_run() {
     // Test running the application in headless mode with custom settings
-    let args = Args::parse_from(["render_sandbox", "--headless", "--samples", "2"]);
+    let args = Args::parse_from(["render_sandbox", "--headless", "--samples", "4"]);
 
     if let Ok(app) = Application::new(args) {
         let result = app.run();

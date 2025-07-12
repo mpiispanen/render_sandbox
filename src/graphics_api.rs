@@ -163,9 +163,10 @@ impl GraphicsApi for WgpuGraphicsApi {
     }
 
     fn validate_sample_count(&self, requested_samples: u32) -> u32 {
-        // MSAA sample counts must be powers of 2 and supported by the hardware
-        // Common supported values are 1, 2, 4, 8, 16
-        let valid_samples = [1, 2, 4, 8, 16];
+        // For maximum compatibility, use only WebGPU spec guaranteed sample counts
+        // The WebGPU spec guarantees [1, 4] samples for depth formats like Depth32Float
+        // Using only these values ensures compatibility across all devices and environments
+        let valid_samples = [1, 4];
 
         // Find the closest valid sample count that doesn't exceed the requested value
         let clamped = valid_samples
@@ -177,7 +178,7 @@ impl GraphicsApi for WgpuGraphicsApi {
 
         if clamped != requested_samples {
             log::warn!(
-                "MSAA sample count {requested_samples} is not supported, clamping to {clamped}"
+                "MSAA sample count {requested_samples} is not supported, clamping to {clamped} (using WebGPU spec guaranteed values for maximum compatibility)"
             );
         }
 
@@ -225,8 +226,9 @@ mod tests {
     #[test]
     fn test_sample_count_validation_logic() {
         // Test the validation logic without requiring a full graphics API instance
+        // Using WebGPU spec guaranteed values for maximum compatibility
         fn validate_sample_count_test(requested_samples: u32) -> u32 {
-            let valid_samples = [1, 2, 4, 8, 16];
+            let valid_samples = [1, 4];
             valid_samples
                 .iter()
                 .rev()
@@ -235,22 +237,51 @@ mod tests {
                 .unwrap_or(1)
         }
 
-        // Test valid sample counts
+        // Test valid sample counts (WebGPU spec guaranteed)
         assert_eq!(validate_sample_count_test(1), 1);
-        assert_eq!(validate_sample_count_test(2), 2);
         assert_eq!(validate_sample_count_test(4), 4);
-        assert_eq!(validate_sample_count_test(8), 8);
-        assert_eq!(validate_sample_count_test(16), 16);
 
         // Test invalid sample counts (should be clamped to nearest lower valid value)
-        assert_eq!(validate_sample_count_test(3), 2);
-        assert_eq!(validate_sample_count_test(5), 4);
-        assert_eq!(validate_sample_count_test(6), 4);
-        assert_eq!(validate_sample_count_test(7), 4);
-        assert_eq!(validate_sample_count_test(9), 8);
-        assert_eq!(validate_sample_count_test(15), 8);
-        assert_eq!(validate_sample_count_test(17), 16);
-        assert_eq!(validate_sample_count_test(32), 16);
+        assert_eq!(
+            validate_sample_count_test(2),
+            1,
+            "Sample count 2 should clamp to 1"
+        );
+        assert_eq!(
+            validate_sample_count_test(3),
+            1,
+            "Sample count 3 should clamp to 1"
+        );
+        assert_eq!(
+            validate_sample_count_test(5),
+            4,
+            "Sample count 5 should clamp to 4"
+        );
+        assert_eq!(
+            validate_sample_count_test(6),
+            4,
+            "Sample count 6 should clamp to 4"
+        );
+        assert_eq!(
+            validate_sample_count_test(7),
+            4,
+            "Sample count 7 should clamp to 4"
+        );
+        assert_eq!(
+            validate_sample_count_test(8),
+            4,
+            "Sample count 8 should clamp to 4"
+        );
+        assert_eq!(
+            validate_sample_count_test(16),
+            4,
+            "Sample count 16 should clamp to 4"
+        );
+        assert_eq!(
+            validate_sample_count_test(32),
+            4,
+            "Sample count 32 should clamp to 4"
+        );
 
         // Test edge case
         assert_eq!(validate_sample_count_test(0), 1);
