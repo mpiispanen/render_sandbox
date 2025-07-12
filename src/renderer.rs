@@ -125,11 +125,13 @@ impl Renderer {
 
         // Forward render pass - use actual ForwardRenderPass instead of placeholder
         let (width, height) = self.graphics_api.surface_size();
+        let surface_format = self.graphics_api.surface_format();
         let forward_pass = ForwardRenderPass::new("ForwardPass")
             .with_resource("BackBuffer", ResourceUsage::ReadWrite)
             .with_resource("DepthBuffer", ResourceUsage::ReadWrite)
             .with_clear_color([0.1, 0.2, 0.3, 1.0]) // Dark blue background
-            .with_resolution(width, height);
+            .with_resolution(width, height)
+            .with_surface_format(surface_format);
         self.render_graph.add_pass(Box::new(forward_pass));
 
         // Compile the render graph
@@ -137,7 +139,8 @@ impl Renderer {
 
         // Initialize all render passes with GPU resources
         let device = self.graphics_api.device();
-        self.render_graph.initialize_passes(device, &self.resource_manager)?;
+        self.render_graph
+            .initialize_passes(device, &self.resource_manager)?;
 
         log::debug!("Default render graph setup complete");
         Ok(())
@@ -168,7 +171,8 @@ impl Renderer {
                 view_formats: &[],
             },
         );
-        self.resource_manager.register_named_resource("DepthBuffer", depth_texture);
+        self.resource_manager
+            .register_named_resource("DepthBuffer", depth_texture);
 
         // Create back buffer (color target) and register it as "BackBuffer" for the render graph
         let back_buffer = self.resource_manager.create_texture(
@@ -188,7 +192,8 @@ impl Renderer {
                 view_formats: &[],
             },
         );
-        self.resource_manager.register_named_resource("BackBuffer", back_buffer);
+        self.resource_manager
+            .register_named_resource("BackBuffer", back_buffer);
 
         log::debug!("Default resources created and registered");
         Ok(())

@@ -428,6 +428,7 @@ pub struct ForwardRenderPass {
     resources: Vec<ResourceDeclaration>,
     clear_color: [f64; 4],
     resolution: (u32, u32),
+    surface_format: wgpu::TextureFormat,
     render_pipeline: Option<wgpu::RenderPipeline>,
     initialized: bool,
 }
@@ -439,6 +440,7 @@ impl ForwardRenderPass {
             resources: vec![],
             clear_color: [0.0, 0.0, 0.0, 1.0],
             resolution: (800, 600), // Default resolution
+            surface_format: wgpu::TextureFormat::Bgra8UnormSrgb, // Default format, should be overridden
             render_pipeline: None,
             initialized: false,
         }
@@ -459,6 +461,11 @@ impl ForwardRenderPass {
 
     pub fn with_resolution(mut self, width: u32, height: u32) -> Self {
         self.resolution = (width, height);
+        self
+    }
+
+    pub fn with_surface_format(mut self, format: wgpu::TextureFormat) -> Self {
+        self.surface_format = format;
         self
     }
 }
@@ -510,11 +517,13 @@ impl RenderPass for ForwardRenderPass {
         // Create render pipeline
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Forward Render Pipeline"),
-            layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Forward Pipeline Layout"),
-                bind_group_layouts: &[],
-                push_constant_ranges: &[],
-            })),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Forward Pipeline Layout"),
+                    bind_group_layouts: &[],
+                    push_constant_ranges: &[],
+                }),
+            ),
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
@@ -525,7 +534,7 @@ impl RenderPass for ForwardRenderPass {
                 module: &shader,
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                    format: self.surface_format,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
@@ -575,19 +584,31 @@ impl RenderPass for ForwardRenderPass {
         // Get the actual render targets from the resource manager
         let back_buffer_handle: crate::resource_manager::Handle<wgpu::Texture> = resource_manager
             .get_named_resource("BackBuffer")
-            .ok_or_else(|| RenderGraphError::ResourceNotFound(crate::render_graph::ResourceId::new("BackBuffer")))?;
-        
+            .ok_or_else(|| {
+                RenderGraphError::ResourceNotFound(crate::render_graph::ResourceId::new(
+                    "BackBuffer",
+                ))
+            })?;
+
         let back_buffer = resource_manager
             .get_texture(back_buffer_handle)
-            .map_err(|e| RenderGraphError::ExecutionFailed(format!("Failed to get BackBuffer: {e}")))?;
+            .map_err(|e| {
+                RenderGraphError::ExecutionFailed(format!("Failed to get BackBuffer: {e}"))
+            })?;
 
         let depth_buffer_handle: crate::resource_manager::Handle<wgpu::Texture> = resource_manager
             .get_named_resource("DepthBuffer")
-            .ok_or_else(|| RenderGraphError::ResourceNotFound(crate::render_graph::ResourceId::new("DepthBuffer")))?;
-        
+            .ok_or_else(|| {
+                RenderGraphError::ResourceNotFound(crate::render_graph::ResourceId::new(
+                    "DepthBuffer",
+                ))
+            })?;
+
         let depth_buffer = resource_manager
             .get_texture(depth_buffer_handle)
-            .map_err(|e| RenderGraphError::ExecutionFailed(format!("Failed to get DepthBuffer: {e}")))?;
+            .map_err(|e| {
+                RenderGraphError::ExecutionFailed(format!("Failed to get DepthBuffer: {e}"))
+            })?;
 
         // Create texture views for rendering
         let color_view = back_buffer.create_view(&wgpu::TextureViewDescriptor::default());
