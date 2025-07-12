@@ -86,6 +86,13 @@ pub trait RenderPass: Send + Sync {
     /// Get the resource declarations for this pass
     fn resources(&self) -> Vec<ResourceDeclaration>;
 
+    /// Initialize the render pass with GPU resources (called once before first execution)
+    fn initialize(
+        &mut self,
+        device: &wgpu::Device,
+        resource_manager: &ResourceManager,
+    ) -> Result<(), RenderGraphError>;
+
     /// Execute the render pass
     fn execute(
         &self,
@@ -158,6 +165,23 @@ impl RenderGraph {
         self.passes.clear();
         self.resource_declarations.clear();
         self.compiled = None;
+    }
+
+    /// Initialize all render passes with GPU resources
+    pub fn initialize_passes(
+        &mut self,
+        device: &wgpu::Device,
+        resource_manager: &ResourceManager,
+    ) -> Result<(), RenderGraphError> {
+        log::debug!("Initializing all render passes");
+
+        for (pass_id, pass) in self.passes.iter_mut() {
+            log::debug!("Initializing pass: {pass_id}");
+            pass.initialize(device, resource_manager)?;
+        }
+
+        log::debug!("All render passes initialized successfully");
+        Ok(())
     }
 
     /// Compile the render graph
@@ -375,6 +399,16 @@ impl RenderPass for PlaceholderPass {
         self.resources.clone()
     }
 
+    fn initialize(
+        &mut self,
+        _device: &wgpu::Device,
+        _resource_manager: &ResourceManager,
+    ) -> Result<(), RenderGraphError> {
+        log::debug!("Initializing placeholder pass: {}", self.id);
+        // Placeholder implementation - no initialization needed
+        Ok(())
+    }
+
     fn execute(
         &self,
         _device: &wgpu::Device,
@@ -394,6 +428,8 @@ pub struct ForwardRenderPass {
     resources: Vec<ResourceDeclaration>,
     clear_color: [f64; 4],
     resolution: (u32, u32),
+    render_pipeline: Option<wgpu::RenderPipeline>,
+    initialized: bool,
 }
 
 impl ForwardRenderPass {
@@ -403,6 +439,8 @@ impl ForwardRenderPass {
             resources: vec![],
             clear_color: [0.0, 0.0, 0.0, 1.0],
             resolution: (800, 600), // Default resolution
+            render_pipeline: None,
+            initialized: false,
         }
     }
 
@@ -432,6 +470,97 @@ impl RenderPass for ForwardRenderPass {
 
     fn resources(&self) -> Vec<ResourceDeclaration> {
         self.resources.clone()
+    }
+
+    fn initialize(
+        &mut self,
+        device: &wgpu::Device,
+        _resource_manager: &ResourceManager,
+    ) -> Result<(), RenderGraphError> {
+        if self.initialized {
+            return Ok(());
+        }
+
+        log::debug!("Initializing forward render pass: {}", self.id);
+
+        // Create a basic shader for forward rendering
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Forward Render Shader"),
+            source: wgpu::ShaderSource::Wgsl(
+                r#"
+                @vertex
+                fn vs_main(@builtin(vertex_index) vertex_index: u32) -> @builtin(position) vec4<f32> {
+                    // Simple fullscreen triangle
+                    var pos = array<vec2<f32>, 3>(
+                        vec2<f32>(-1.0, -1.0),
+                        vec2<f32>(-1.0,  3.0),
+                        vec2<f32>( 3.0, -1.0),
+                    );
+                    return vec4<f32>(pos[vertex_index], 0.0, 1.0);
+                }
+
+                @fragment
+                fn fs_main() -> @location(0) vec4<f32> {
+                    return vec4<f32>(0.1, 0.2, 0.3, 1.0);
+                }
+                "#.into(),
+            ),
+        });
+
+        // Create render pipeline
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Forward Render Pipeline"),
+            layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Forward Pipeline Layout"),
+                bind_group_layouts: &[],
+                push_constant_ranges: &[],
+            })),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: "vs_main",
+                buffers: &[],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: "fs_main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth32Float,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+            cache: None,
+        });
+
+        self.render_pipeline = Some(render_pipeline);
+        self.initialized = true;
+
+        log::debug!("Forward render pass initialized successfully");
+        Ok(())
     }
 
     fn execute(
@@ -465,7 +594,7 @@ impl RenderPass for ForwardRenderPass {
         let depth_view = depth_buffer.create_view(&wgpu::TextureViewDescriptor::default());
 
         // Create the render pass with proper render targets
-        let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Forward Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &color_view,
@@ -491,6 +620,12 @@ impl RenderPass for ForwardRenderPass {
             timestamp_writes: None,
             occlusion_query_set: None,
         });
+
+        // If we have a render pipeline, use it to render a simple triangle
+        if let Some(ref pipeline) = self.render_pipeline {
+            render_pass.set_pipeline(pipeline);
+            render_pass.draw(0..3, 0..1); // Draw a single triangle
+        }
 
         log::debug!("Forward render pass executed with proper render targets");
 
