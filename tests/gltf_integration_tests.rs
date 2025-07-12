@@ -102,3 +102,140 @@ fn test_scene_node_creation_for_gltf() {
     // (without actual GPU resources)
     log::info!("GLTF scene node structure test passed");
 }
+
+#[test]
+fn test_gltf_sample_models_structure_validation() {
+    use std::path::Path;
+
+    // Test structural integrity of official glTF Sample Models without GPU
+    let sample_models = [
+        (
+            "test_assets/gltf_sample_models/2.0/Triangle/glTF/Triangle.gltf",
+            "triangle",
+            1,
+            3,
+        ),
+        (
+            "test_assets/gltf_sample_models/2.0/Box/glTF/Box.gltf",
+            "box",
+            1,
+            24,
+        ),
+        (
+            "test_assets/gltf_sample_models/2.0/SimpleMeshes/glTF/SimpleMeshes.gltf",
+            "simple_meshes",
+            1, // Only 1 mesh
+            3,
+        ),
+        (
+            "test_assets/gltf_sample_models/2.0/Cameras/glTF/Cameras.gltf",
+            "cameras",
+            1,
+            4, // Cameras model has 4 vertices
+        ),
+    ];
+
+    for (model_path, model_name, expected_meshes, expected_min_vertices) in sample_models {
+        let path = Path::new(model_path);
+        if path.exists() {
+            log::info!("Testing sample model structure: {model_name}");
+
+            let gltf_result = gltf::Gltf::open(path);
+            assert!(gltf_result.is_ok(), "Should load {model_name} successfully");
+
+            let gltf_doc = gltf_result.unwrap();
+
+            // Verify mesh count
+            let mesh_count = gltf_doc.meshes().count();
+            assert_eq!(
+                mesh_count, expected_meshes,
+                "Model {model_name} should have {expected_meshes} meshes, found {mesh_count}"
+            );
+
+            // Verify vertex count in first mesh
+            if let Some(mesh) = gltf_doc.meshes().next() {
+                if let Some(primitive) = mesh.primitives().next() {
+                    if let Some(accessor) = primitive.get(&gltf::Semantic::Positions) {
+                        assert!(
+                            accessor.count() >= expected_min_vertices,
+                            "Model {model_name} should have at least {expected_min_vertices} vertices in first mesh"
+                        );
+                    }
+                }
+            }
+
+            log::info!("Sample model {model_name} structure validation passed");
+        } else {
+            log::warn!("Sample model {model_name} not found, skipping test");
+        }
+    }
+}
+
+#[test]
+fn test_gltf_sample_models_scene_hierarchy() {
+    use std::path::Path;
+
+    // Test scene hierarchy features in complex models from official glTF Sample Models
+    let hierarchical_path =
+        Path::new("test_assets/gltf_sample_models/2.0/Cameras/glTF/Cameras.gltf");
+    if hierarchical_path.exists() {
+        let gltf_doc = gltf::Gltf::open(hierarchical_path).unwrap();
+
+        // Verify scene structure - Cameras model has 3 root nodes
+        let scene = gltf_doc.scenes().next().unwrap();
+        let root_node_count = scene.nodes().count();
+        assert_eq!(root_node_count, 3, "Cameras scene should have 3 root nodes");
+
+        // Verify node hierarchy - Cameras model has 3 total nodes
+        let total_nodes = gltf_doc.nodes().count();
+        assert_eq!(total_nodes, 3, "Cameras scene should have 3 total nodes");
+
+        // The Cameras model may not have hierarchical structure, just verify we have nodes
+        assert!(total_nodes >= 1, "Should have at least one node");
+
+        log::info!("Scene structure validation passed");
+    }
+}
+
+#[test]
+fn test_gltf_sample_models_comparison() {
+    use std::path::Path;
+
+    // Compare simple models to verify they have different characteristics using official glTF Sample Models
+    let triangle_path = Path::new("test_assets/gltf_sample_models/2.0/Triangle/glTF/Triangle.gltf");
+    let box_path = Path::new("test_assets/gltf_sample_models/2.0/Box/glTF/Box.gltf");
+
+    if triangle_path.exists() && box_path.exists() {
+        let triangle_doc = gltf::Gltf::open(triangle_path).unwrap();
+        let box_doc = gltf::Gltf::open(box_path).unwrap();
+
+        // Get vertex counts
+        let triangle_vertices = triangle_doc
+            .meshes()
+            .next()
+            .and_then(|m| m.primitives().next())
+            .and_then(|p| p.get(&gltf::Semantic::Positions))
+            .map(|a| a.count())
+            .unwrap_or(0);
+
+        let box_vertices = box_doc
+            .meshes()
+            .next()
+            .and_then(|m| m.primitives().next())
+            .and_then(|p| p.get(&gltf::Semantic::Positions))
+            .map(|a| a.count())
+            .unwrap_or(0);
+
+        // Verify different complexity - Box model from glTF Sample Models has 24 vertices
+        assert_eq!(triangle_vertices, 3, "Triangle should have 3 vertices");
+        assert_eq!(box_vertices, 24, "Box should have 24 vertices");
+        assert!(
+            box_vertices > triangle_vertices,
+            "Box should be more complex than triangle"
+        );
+
+        log::info!(
+            "Sample model comparison test passed - triangle: {triangle_vertices} vertices, box: {box_vertices} vertices"
+        );
+    }
+}
