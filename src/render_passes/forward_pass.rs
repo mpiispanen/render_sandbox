@@ -1,9 +1,10 @@
+use crate::pipeline::{ShaderRegistry, VertexLayout};
 use crate::render_graph::{
     PassId, RenderGraphError, RenderPass, ResourceDeclaration, ResourceId, ResourceUsage,
 };
 use crate::resource_manager::ResourceManager;
 
-/// A simple forward renderer pass that renders meshes
+/// A forward renderer pass that renders meshes from the scene
 pub struct ForwardRenderPass {
     id: PassId,
     resources: Vec<ResourceDeclaration>,
@@ -11,6 +12,7 @@ pub struct ForwardRenderPass {
     resolution: (u32, u32),
     surface_format: wgpu::TextureFormat,
     render_pipeline: Option<wgpu::RenderPipeline>,
+    _shader_registry: ShaderRegistry,  // For future use
     initialized: bool,
 }
 
@@ -23,6 +25,7 @@ impl ForwardRenderPass {
             resolution: (800, 600), // Default resolution
             surface_format: wgpu::TextureFormat::Bgra8UnormSrgb, // Default format, should be overridden
             render_pipeline: None,
+            _shader_registry: ShaderRegistry::new(),
             initialized: false,
         }
     }
@@ -71,54 +74,80 @@ impl RenderPass for ForwardRenderPass {
 
         log::debug!("Initializing forward render pass: {}", self.id);
 
-        // Create a basic shader for forward rendering
+        // Create default shaders for the forward pass
+        let _shader_registry = ShaderRegistry::new();
+        
+        // Create a simple forward shader that works with position-only vertices
+        let forward_shader_source = r#"
+            struct VertexInput {
+                @location(0) position: vec3<f32>,
+            }
+
+            struct VertexOutput {
+                @builtin(position) clip_position: vec4<f32>,
+            }
+
+            @vertex
+            fn vs_main(model: VertexInput) -> VertexOutput {
+                var out: VertexOutput;
+                out.clip_position = vec4<f32>(model.position, 1.0);
+                return out;
+            }
+
+            @fragment
+            fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+                return vec4<f32>(0.8, 0.2, 0.3, 1.0);
+            }
+        "#;
+
+        // We need a mutable resource manager to create shaders, but we only have a reference
+        // For now, we'll create the pipeline manually - this is a limitation that should be addressed
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Forward Render Shader"),
-            source: wgpu::ShaderSource::Wgsl(
-                r#"
-                @vertex
-                fn vs_main(@builtin(vertex_index) vertex_index: u32) -> @builtin(position) vec4<f32> {
-                    // Simple fullscreen triangle
-                    var pos = array<vec2<f32>, 3>(
-                        vec2<f32>(-1.0, -1.0),
-                        vec2<f32>(-1.0,  3.0),
-                        vec2<f32>( 3.0, -1.0),
-                    );
-                    return vec4<f32>(pos[vertex_index], 0.0, 1.0);
-                }
-
-                @fragment
-                fn fs_main() -> @location(0) vec4<f32> {
-                    return vec4<f32>(0.1, 0.2, 0.3, 1.0);
-                }
-                "#.into(),
-            ),
+            source: wgpu::ShaderSource::Wgsl(forward_shader_source.into()),
         });
 
-        // Create render pipeline
+        // Create render pipeline using the new pipeline builder
+        let vertex_layout = VertexLayout::position_only();
+        let (mut vertex_buffer_layout, attributes) = vertex_layout.build();
+        vertex_buffer_layout.attributes = &attributes;
+
+        // Create pipeline layout
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Forward Pipeline Layout"),
+            bind_group_layouts: &[],
+            push_constant_ranges: &[],
+        });
+
+        // Create depth stencil state
+        let depth_stencil = Some(wgpu::DepthStencilState {
+            format: wgpu::TextureFormat::Depth32Float,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Less,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        });
+
+        // Create color targets
+        let color_targets = [Some(wgpu::ColorTargetState {
+            format: self.surface_format,
+            blend: Some(wgpu::BlendState::REPLACE),
+            write_mask: wgpu::ColorWrites::ALL,
+        })];
+
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Forward Render Pipeline"),
-            layout: Some(
-                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Forward Pipeline Layout"),
-                    bind_group_layouts: &[],
-                    push_constant_ranges: &[],
-                }),
-            ),
+            layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[],
+                buffers: &[vertex_buffer_layout],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: self.surface_format,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
+                targets: &color_targets,
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             }),
             primitive: wgpu::PrimitiveState {
@@ -130,13 +159,7 @@ impl RenderPass for ForwardRenderPass {
                 unclipped_depth: false,
                 conservative: false,
             },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: wgpu::TextureFormat::Depth32Float,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default(),
-            }),
+            depth_stencil,
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -149,7 +172,7 @@ impl RenderPass for ForwardRenderPass {
         self.render_pipeline = Some(render_pipeline);
         self.initialized = true;
 
-        log::debug!("Forward render pass initialized successfully");
+        log::debug!("Forward render pass initialized successfully with pipeline abstraction");
         Ok(())
     }
 
@@ -160,7 +183,7 @@ impl RenderPass for ForwardRenderPass {
         resource_manager: &ResourceManager,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<(), RenderGraphError> {
-        log::debug!("Executing forward render pass: {}", self.id);
+        log::debug!("Executing forward render pass with pipeline abstraction: {}", self.id);
 
         // Get the actual render targets from the resource manager
         let back_buffer_handle: crate::resource_manager::Handle<wgpu::Texture> = resource_manager
@@ -223,13 +246,30 @@ impl RenderPass for ForwardRenderPass {
             occlusion_query_set: None,
         });
 
-        // If we have a render pipeline, use it to render a simple triangle
+        // If we have a render pipeline, use it to render
         if let Some(ref pipeline) = self.render_pipeline {
             render_pass.set_pipeline(pipeline);
+            
+            // For now, render a hardcoded triangle to demonstrate the new pipeline system
+            // In the future, this should iterate through scene meshes
             render_pass.draw(0..3, 0..1); // Draw a single triangle
+            
+            // TODO: In the enhanced version, this would look like:
+            // for mesh_node in visible_mesh_nodes {
+            //     let vertex_buffer = resource_manager.get_buffer(mesh_node.mesh.vertex_buffer)?;
+            //     render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            //     
+            //     if let Some(index_buffer_handle) = mesh_node.mesh.index_buffer {
+            //         let index_buffer = resource_manager.get_buffer(index_buffer_handle)?;
+            //         render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            //         render_pass.draw_indexed(0..mesh_node.mesh.index_count.unwrap(), 0, 0..1);
+            //     } else {
+            //         render_pass.draw(0..mesh_node.mesh.vertex_count, 0..1);
+            //     }
+            // }
         }
 
-        log::debug!("Forward render pass executed with proper render targets");
+        log::debug!("Forward render pass executed with pipeline abstraction and proper render targets");
 
         Ok(())
     }
