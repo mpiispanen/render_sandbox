@@ -53,7 +53,8 @@ async fn test_image_capture_integration() {
             });
 
             // Test capture (this would normally be done after rendering)
-            let capture_result = capture.capture_texture(&mut encoder, test_texture_handle, &resource_manager);
+            let capture_result =
+                capture.capture_texture(&mut encoder, test_texture_handle, &resource_manager);
             assert!(capture_result.is_ok());
 
             println!("Image capture integration test completed successfully");
@@ -68,7 +69,7 @@ async fn test_image_capture_integration() {
 fn test_image_capture_basic_functionality() {
     // Test basic functionality without requiring a GPU device
     let capture = ImageCapture::new(800, 600, wgpu::TextureFormat::Bgra8UnormSrgb);
-    
+
     assert_eq!(capture.dimensions(), (800, 600));
     assert_eq!(capture.format(), wgpu::TextureFormat::Bgra8UnormSrgb);
     assert!(capture.staging_buffer().is_none());
@@ -81,15 +82,15 @@ fn test_image_format_utilities() {
     assert_eq!(ImageFormat::from_str("jpg").unwrap(), ImageFormat::Jpeg);
     assert_eq!(ImageFormat::from_str("jpeg").unwrap(), ImageFormat::Jpeg);
     assert_eq!(ImageFormat::from_str("bmp").unwrap(), ImageFormat::Bmp);
-    
+
     // Test case insensitive
     assert_eq!(ImageFormat::from_str("PNG").unwrap(), ImageFormat::Png);
     assert_eq!(ImageFormat::from_str("JPEG").unwrap(), ImageFormat::Jpeg);
-    
+
     // Test error cases
     assert!(ImageFormat::from_str("tiff").is_err());
     assert!(ImageFormat::from_str("gif").is_err());
-    
+
     // Test extensions
     assert_eq!(ImageFormat::Png.extension(), "png");
     assert_eq!(ImageFormat::Jpeg.extension(), "jpg");

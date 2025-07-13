@@ -20,7 +20,9 @@ impl std::fmt::Display for PipelineError {
         match self {
             PipelineError::ShaderNotFound(name) => write!(f, "Shader not found: {name}"),
             PipelineError::InvalidVertexLayout => write!(f, "Invalid vertex layout"),
-            PipelineError::PipelineCreationFailed(msg) => write!(f, "Pipeline creation failed: {msg}"),
+            PipelineError::PipelineCreationFailed(msg) => {
+                write!(f, "Pipeline creation failed: {msg}")
+            }
             PipelineError::ResourceError(msg) => write!(f, "Resource error: {msg}"),
         }
     }
@@ -41,7 +43,11 @@ pub enum VertexAttribute {
 
 impl VertexAttribute {
     /// Get the wgpu vertex attribute descriptor for this attribute
-    pub fn wgpu_attribute(&self, location: u32, offset: wgpu::BufferAddress) -> wgpu::VertexAttribute {
+    pub fn wgpu_attribute(
+        &self,
+        location: u32,
+        offset: wgpu::BufferAddress,
+    ) -> wgpu::VertexAttribute {
         wgpu::VertexAttribute {
             offset,
             shader_location: location,
@@ -59,12 +65,12 @@ impl VertexAttribute {
     /// Get the size in bytes of this attribute
     pub fn size(&self) -> u64 {
         match self {
-            VertexAttribute::Position3D => 12, // 3 * f32
-            VertexAttribute::Position2D => 8,  // 2 * f32
-            VertexAttribute::Normal => 12,     // 3 * f32
-            VertexAttribute::Tangent => 16,    // 4 * f32
+            VertexAttribute::Position3D => 12,  // 3 * f32
+            VertexAttribute::Position2D => 8,   // 2 * f32
+            VertexAttribute::Normal => 12,      // 3 * f32
+            VertexAttribute::Tangent => 16,     // 4 * f32
             VertexAttribute::TextureCoord => 8, // 2 * f32
-            VertexAttribute::Color => 16,      // 4 * f32
+            VertexAttribute::Color => 16,       // 4 * f32
         }
     }
 }
@@ -94,7 +100,12 @@ impl VertexLayout {
 
     /// Build the wgpu vertex buffer layout
     /// Returns owned attributes to avoid lifetime issues
-    pub fn build(&self) -> (wgpu::VertexBufferLayout<'static>, Vec<wgpu::VertexAttribute>) {
+    pub fn build(
+        &self,
+    ) -> (
+        wgpu::VertexBufferLayout<'static>,
+        Vec<wgpu::VertexAttribute>,
+    ) {
         let mut attributes = Vec::new();
         let mut offset = 0;
 
@@ -108,7 +119,7 @@ impl VertexLayout {
         let layout = wgpu::VertexBufferLayout {
             array_stride: self.stride,
             step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[],  // Will be set by the caller
+            attributes: &[], // Will be set by the caller
         };
 
         (layout, attributes)
@@ -286,7 +297,7 @@ impl Default for ShaderRegistry {
 /// Graphics pipeline builder with sensible defaults
 pub struct GraphicsPipelineBuilder {
     label: Option<String>,
-    vertex_shader: Option<String>,  // Use shader name instead of handle
+    vertex_shader: Option<String>, // Use shader name instead of handle
     fragment_shader: Option<String>, // Use shader name instead of handle
     vertex_layout: VertexLayout,
     topology: wgpu::PrimitiveTopology,
@@ -385,21 +396,27 @@ impl GraphicsPipelineBuilder {
         resource_manager: &ResourceManager,
         shader_registry: &ShaderRegistry,
     ) -> Result<wgpu::RenderPipeline, PipelineError> {
-        let vertex_shader_name = self.vertex_shader
+        let vertex_shader_name = self
+            .vertex_shader
             .ok_or_else(|| PipelineError::ShaderNotFound("vertex shader".to_string()))?;
-        let fragment_shader_name = self.fragment_shader
+        let fragment_shader_name = self
+            .fragment_shader
             .ok_or_else(|| PipelineError::ShaderNotFound("fragment shader".to_string()))?;
 
         // Get shader handles from registry
-        let vertex_shader = shader_registry.get_shader(&vertex_shader_name)
+        let vertex_shader = shader_registry
+            .get_shader(&vertex_shader_name)
             .ok_or_else(|| PipelineError::ShaderNotFound(vertex_shader_name))?;
-        let fragment_shader = shader_registry.get_shader(&fragment_shader_name)
+        let fragment_shader = shader_registry
+            .get_shader(&fragment_shader_name)
             .ok_or_else(|| PipelineError::ShaderNotFound(fragment_shader_name))?;
 
         // Get shader modules - use references to avoid moving
-        let vs_module = resource_manager.get_shader(vertex_shader)
+        let vs_module = resource_manager
+            .get_shader(vertex_shader)
             .map_err(|e| PipelineError::ResourceError(e.to_string()))?;
-        let fs_module = resource_manager.get_shader(fragment_shader)
+        let fs_module = resource_manager
+            .get_shader(fragment_shader)
             .map_err(|e| PipelineError::ResourceError(e.to_string()))?;
 
         let (mut vertex_buffer_layout, attributes) = self.vertex_layout.build();
@@ -407,7 +424,11 @@ impl GraphicsPipelineBuilder {
 
         // Create pipeline layout (empty for now, can be extended later)
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: self.label.as_ref().map(|l| format!("{} Layout", l)).as_deref(),
+            label: self
+                .label
+                .as_ref()
+                .map(|l| format!("{} Layout", l))
+                .as_deref(),
             bind_group_layouts: &[],
             push_constant_ranges: &[],
         });
@@ -415,7 +436,9 @@ impl GraphicsPipelineBuilder {
         // Create depth stencil state if depth testing is enabled
         let depth_stencil = if self.depth_test {
             Some(wgpu::DepthStencilState {
-                format: self.depth_format.unwrap_or(wgpu::TextureFormat::Depth32Float),
+                format: self
+                    .depth_format
+                    .unwrap_or(wgpu::TextureFormat::Depth32Float),
                 depth_write_enabled: self.depth_write,
                 depth_compare: self.depth_compare,
                 stencil: wgpu::StencilState::default(),
@@ -481,7 +504,7 @@ impl Default for GraphicsPipelineBuilder {
 /// Compute pipeline builder with sensible defaults
 pub struct ComputePipelineBuilder {
     label: Option<String>,
-    compute_shader: Option<String>,  // Use shader name instead of handle
+    compute_shader: Option<String>, // Use shader name instead of handle
 }
 
 impl ComputePipelineBuilder {
@@ -512,20 +535,27 @@ impl ComputePipelineBuilder {
         resource_manager: &ResourceManager,
         shader_registry: &ShaderRegistry,
     ) -> Result<wgpu::ComputePipeline, PipelineError> {
-        let compute_shader_name = self.compute_shader
+        let compute_shader_name = self
+            .compute_shader
             .ok_or_else(|| PipelineError::ShaderNotFound("compute shader".to_string()))?;
 
         // Get shader handle from registry
-        let compute_shader = shader_registry.get_shader(&compute_shader_name)
+        let compute_shader = shader_registry
+            .get_shader(&compute_shader_name)
             .ok_or_else(|| PipelineError::ShaderNotFound(compute_shader_name))?;
 
         // Get shader module
-        let cs_module = resource_manager.get_shader(compute_shader)
+        let cs_module = resource_manager
+            .get_shader(compute_shader)
             .map_err(|e| PipelineError::ResourceError(e.to_string()))?;
 
         // Create pipeline layout (empty for now, can be extended later)
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: self.label.as_ref().map(|l| format!("{} Layout", l)).as_deref(),
+            label: self
+                .label
+                .as_ref()
+                .map(|l| format!("{} Layout", l))
+                .as_deref(),
             bind_group_layouts: &[],
             push_constant_ranges: &[],
         });

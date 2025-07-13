@@ -126,9 +126,9 @@ impl ImageCapture {
         texture_handle: Handle<wgpu::Texture>,
         resource_manager: &ResourceManager,
     ) -> Result<(), ImageCaptureError> {
-        let staging_buffer_handle = self
-            .staging_buffer()
-            .ok_or_else(|| ImageCaptureError::InvalidTexture("Staging buffer not initialized".to_string()))?;
+        let staging_buffer_handle = self.staging_buffer().ok_or_else(|| {
+            ImageCaptureError::InvalidTexture("Staging buffer not initialized".to_string())
+        })?;
 
         let texture = resource_manager
             .get_texture(texture_handle)
@@ -192,7 +192,9 @@ impl ImageCapture {
     ) -> Result<(), ImageCaptureError> {
         let staging_buffer_handle = self
             .staging_buffer_id
-            .ok_or_else(|| ImageCaptureError::InvalidTexture("Staging buffer not initialized".to_string()))
+            .ok_or_else(|| {
+                ImageCaptureError::InvalidTexture("Staging buffer not initialized".to_string())
+            })
             .map(|id| Handle::from_id(id))?;
 
         let staging_buffer_resource = resource_manager
@@ -211,7 +213,9 @@ impl ImageCapture {
         receiver
             .await
             .map_err(|e| ImageCaptureError::MappingFailed(format!("Channel error: {e}")))?
-            .map_err(|e| ImageCaptureError::MappingFailed(format!("Buffer mapping error: {e:?}")))?;
+            .map_err(|e| {
+                ImageCaptureError::MappingFailed(format!("Buffer mapping error: {e:?}"))
+            })?;
 
         // Read the data
         let data = buffer_slice.get_mapped_range();
@@ -235,7 +239,8 @@ impl ImageCapture {
         let padded_bytes_per_row = ((unpadded_bytes_per_row + align - 1) / align) * align;
 
         // Extract unpadded data
-        let mut image_data = Vec::with_capacity((self.width * self.height * bytes_per_pixel) as usize);
+        let mut image_data =
+            Vec::with_capacity((self.width * self.height * bytes_per_pixel) as usize);
         for row in 0..self.height {
             let start = (row * padded_bytes_per_row) as usize;
             let end = start + unpadded_bytes_per_row as usize;
@@ -268,8 +273,10 @@ impl ImageCapture {
         // Create image and save
         let _color_type = image::ColorType::Rgba8;
 
-        let img = image::ImageBuffer::from_raw(self.width, self.height, final_data)
-            .ok_or_else(|| ImageCaptureError::WriteFailed("Failed to create image buffer".to_string()))?;
+        let img =
+            image::ImageBuffer::from_raw(self.width, self.height, final_data).ok_or_else(|| {
+                ImageCaptureError::WriteFailed("Failed to create image buffer".to_string())
+            })?;
 
         let dynamic_img = image::DynamicImage::ImageRgba8(img);
 

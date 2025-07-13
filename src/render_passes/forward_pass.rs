@@ -12,7 +12,7 @@ pub struct ForwardRenderPass {
     resolution: (u32, u32),
     surface_format: wgpu::TextureFormat,
     render_pipeline: Option<wgpu::RenderPipeline>,
-    _shader_registry: ShaderRegistry,  // For future use
+    _shader_registry: ShaderRegistry, // For future use
     initialized: bool,
 }
 
@@ -76,7 +76,7 @@ impl RenderPass for ForwardRenderPass {
 
         // Create default shaders for the forward pass
         let _shader_registry = ShaderRegistry::new();
-        
+
         // Create a simple forward shader that works with position-only vertices
         let forward_shader_source = r#"
             struct VertexInput {
@@ -183,7 +183,10 @@ impl RenderPass for ForwardRenderPass {
         resource_manager: &ResourceManager,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<(), RenderGraphError> {
-        log::debug!("Executing forward render pass with pipeline abstraction: {}", self.id);
+        log::debug!(
+            "Executing forward render pass with pipeline abstraction: {}",
+            self.id
+        );
 
         // Get the actual render targets from the resource manager
         let back_buffer_handle: crate::resource_manager::Handle<wgpu::Texture> = resource_manager
@@ -249,16 +252,16 @@ impl RenderPass for ForwardRenderPass {
         // If we have a render pipeline, use it to render
         if let Some(ref pipeline) = self.render_pipeline {
             render_pass.set_pipeline(pipeline);
-            
+
             // For now, render a hardcoded triangle to demonstrate the new pipeline system
             // In the future, this should iterate through scene meshes
             render_pass.draw(0..3, 0..1); // Draw a single triangle
-            
+
             // TODO: In the enhanced version, this would look like:
             // for mesh_node in visible_mesh_nodes {
             //     let vertex_buffer = resource_manager.get_buffer(mesh_node.mesh.vertex_buffer)?;
             //     render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-            //     
+            //
             //     if let Some(index_buffer_handle) = mesh_node.mesh.index_buffer {
             //         let index_buffer = resource_manager.get_buffer(index_buffer_handle)?;
             //         render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
@@ -269,7 +272,9 @@ impl RenderPass for ForwardRenderPass {
             // }
         }
 
-        log::debug!("Forward render pass executed with pipeline abstraction and proper render targets");
+        log::debug!(
+            "Forward render pass executed with pipeline abstraction and proper render targets"
+        );
 
         Ok(())
     }

@@ -1,8 +1,8 @@
 use render_sandbox::{
     graphics_api::{GraphicsApi, WgpuGraphicsApi},
     pipeline::{
-        GraphicsPipelineBuilder, ShaderRegistry, VertexAttribute, VertexLayout,
-        ComputePipelineBuilder,
+        ComputePipelineBuilder, GraphicsPipelineBuilder, ShaderRegistry, VertexAttribute,
+        VertexLayout,
     },
     resource_manager::ResourceManager,
 };
@@ -11,11 +11,11 @@ use render_sandbox::{
 fn test_vertex_attribute_properties() {
     // Test attribute sizes
     assert_eq!(VertexAttribute::Position3D.size(), 12); // 3 * f32
-    assert_eq!(VertexAttribute::Position2D.size(), 8);  // 2 * f32
-    assert_eq!(VertexAttribute::Normal.size(), 12);     // 3 * f32
-    assert_eq!(VertexAttribute::Tangent.size(), 16);    // 4 * f32
+    assert_eq!(VertexAttribute::Position2D.size(), 8); // 2 * f32
+    assert_eq!(VertexAttribute::Normal.size(), 12); // 3 * f32
+    assert_eq!(VertexAttribute::Tangent.size(), 16); // 4 * f32
     assert_eq!(VertexAttribute::TextureCoord.size(), 8); // 2 * f32
-    assert_eq!(VertexAttribute::Color.size(), 16);      // 4 * f32
+    assert_eq!(VertexAttribute::Color.size(), 16); // 4 * f32
 
     // Test wgpu attribute creation
     let attr = VertexAttribute::Position3D.wgpu_attribute(0, 0);
@@ -28,14 +28,14 @@ fn test_vertex_attribute_properties() {
 fn test_vertex_layout_build() {
     let layout = VertexLayout::position_normal();
     let (wgpu_layout, attributes) = layout.build();
-    
+
     // Check stride calculation (3 * f32 for position + 3 * f32 for normal = 24 bytes)
     assert_eq!(wgpu_layout.array_stride, 24);
     assert_eq!(wgpu_layout.step_mode, wgpu::VertexStepMode::Vertex);
     assert_eq!(attributes.len(), 2);
 
     // Check attribute offsets
-    assert_eq!(attributes[0].offset, 0);  // Position starts at 0
+    assert_eq!(attributes[0].offset, 0); // Position starts at 0
     assert_eq!(attributes[1].offset, 12); // Normal starts after position (12 bytes)
 }
 
@@ -56,11 +56,11 @@ fn test_vertex_layout_creation() {
 #[test]
 fn test_shader_registry_basic_operations() {
     let mut registry = ShaderRegistry::new();
-    
+
     // Initially empty
     assert!(!registry.has_shader("test_shader"));
     assert!(registry.get_shader("test_shader").is_none());
-    
+
     // Test clearing
     registry.clear();
 }
@@ -145,7 +145,7 @@ fn test_graphics_pipeline_creation_with_device() {
     }
 }
 
-#[test] 
+#[test]
 fn test_pipeline_error_handling() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
