@@ -1,7 +1,6 @@
 use crate::graphics_api::{GraphicsApi, GraphicsError};
-use crate::render_graph::{
-    ForwardRenderPass, PlaceholderPass, RenderGraph, RenderGraphError, ResourceUsage,
-};
+use crate::render_graph::{RenderGraph, RenderGraphError, ResourceUsage};
+use crate::render_passes::{ForwardRenderPass, PlaceholderPass};
 use crate::resource_manager::ResourceManager;
 use crate::scene::{NodeContent, Scene};
 
