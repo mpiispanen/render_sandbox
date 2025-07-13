@@ -55,10 +55,12 @@ pub trait Engine: Send + 'static {
 pub struct PlaceholderEngine {
     frame_count: u32,
     is_headless: bool,
+    width: u32,
+    height: u32,
 }
 
 impl Engine for PlaceholderEngine {
-    async fn new(window_handle: Option<&Window>, _args: &Args) -> Result<Self, EngineError> {
+    async fn new(window_handle: Option<&Window>, args: &Args) -> Result<Self, EngineError> {
         log::info!(
             "Creating placeholder engine (headless: {})",
             window_handle.is_none()
@@ -66,6 +68,8 @@ impl Engine for PlaceholderEngine {
         Ok(PlaceholderEngine {
             frame_count: 0,
             is_headless: window_handle.is_none(),
+            width: args.width,
+            height: args.height,
         })
     }
 
@@ -93,7 +97,7 @@ impl Engine for PlaceholderEngine {
     fn get_rendered_frame_data(&self) -> Option<Vec<u8>> {
         if self.is_headless {
             // Return placeholder RGBA data using the actual resolution from args
-            let size = 800 * 600 * 4; // Use the configured resolution in real implementation
+            let size = (self.width * self.height * 4) as usize;
             Some(
                 vec![
                     255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
@@ -227,9 +231,10 @@ impl Engine for RealTimeEngine {
     fn get_rendered_frame_data(&self) -> Option<Vec<u8>> {
         if self.is_headless {
             // In a real implementation, this would capture the rendered frame
-            // For now, return placeholder data with the actual resolution
-            let size = 800 * 600 * 4; // Use renderer's actual resolution in real implementation
-            Some(vec![128; size]) // Gray image
+            // Use the renderer's actual surface size
+            let (width, height) = self.renderer.graphics_api().surface_size();
+            let size = (width * height * 4) as usize;
+            Some(vec![128; size]) // Gray image with actual resolution
         } else {
             None
         }
