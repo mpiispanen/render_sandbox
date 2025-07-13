@@ -60,11 +60,14 @@ fn test_gltf_test_triangle_creation() {
     // Create triangle using our GltfLoader
     let (device, resource_manager) = gpu_context.split();
     let result = GltfLoader::create_test_triangle(device, resource_manager);
-    
+
     match result {
         Ok(mesh) => {
             assert_eq!(mesh.vertex_count, 3, "Triangle should have 3 vertices");
-            assert!(mesh.index_buffer.is_none(), "Triangle should not have index buffer");
+            assert!(
+                mesh.index_buffer.is_none(),
+                "Triangle should not have index buffer"
+            );
             println!("✓ GLTF test triangle created successfully");
         }
         Err(e) => {
@@ -113,18 +116,13 @@ fn test_gltf_sample_models_with_our_loader() {
 
             // Use our GltfLoader to load the file
             let (device, resource_manager) = gpu_context.split();
-            let result = GltfLoader::load_gltf(
-                device,
-                resource_manager,
-                path,
-                &mut scene,
-            );
+            let result = GltfLoader::load_gltf(device, resource_manager, path, &mut scene);
 
             match result {
                 Ok(()) => {
                     let final_node_count = scene.node_count();
                     let nodes_added = final_node_count - initial_node_count;
-                    
+
                     assert!(
                         nodes_added >= expected_nodes,
                         "{name} should add at least {expected_nodes} nodes, added {nodes_added}"
@@ -183,23 +181,21 @@ fn test_gltf_scene_hierarchy() {
             let mut scene = Scene::new();
 
             let (device, resource_manager) = gpu_context.split();
-            let result = GltfLoader::load_gltf(
-                device,
-                resource_manager,
-                path,
-                &mut scene,
-            );
+            let result = GltfLoader::load_gltf(device, resource_manager, path, &mut scene);
 
             match result {
                 Ok(()) => {
-                    assert!(scene.node_count() > 0, "Scene should have nodes after loading");
-                    
+                    assert!(
+                        scene.node_count() > 0,
+                        "Scene should have nodes after loading"
+                    );
+
                     // Test scene traversal
                     let mut visited_nodes = 0;
                     scene.traverse_depth_first(|_node| {
                         visited_nodes += 1;
                     });
-                    
+
                     assert_eq!(
                         visited_nodes,
                         scene.node_count(),
@@ -238,21 +234,11 @@ fn test_gltf_scene_complexity() {
 
         // Load simple model
         let (device, resource_manager) = gpu_context.split();
-        let _ = GltfLoader::load_gltf(
-            device,
-            resource_manager,
-            simple_path,
-            &mut simple_scene,
-        );
+        let _ = GltfLoader::load_gltf(device, resource_manager, simple_path, &mut simple_scene);
 
         // Re-split for second call (needed due to borrow checker)
         let (device, resource_manager) = gpu_context.split();
-        let _ = GltfLoader::load_gltf(
-            device,
-            resource_manager,
-            complex_path,
-            &mut complex_scene,
-        );
+        let _ = GltfLoader::load_gltf(device, resource_manager, complex_path, &mut complex_scene);
 
         let simple_nodes = simple_scene.node_count();
         let complex_nodes = complex_scene.node_count();
@@ -289,16 +275,11 @@ fn test_gltf_feature_support() {
         let mut scene = Scene::new();
 
         let (device, resource_manager) = gpu_context.split();
-        match GltfLoader::load_gltf(
-            device,
-            resource_manager,
-            test_triangle_path,
-            &mut scene,
-        ) {
+        match GltfLoader::load_gltf(device, resource_manager, test_triangle_path, &mut scene) {
             Ok(()) => {
                 // Verify basic features
                 assert!(scene.node_count() > 0, "Should have loaded nodes");
-                
+
                 let mesh_nodes = scene.get_mesh_nodes();
                 assert!(!mesh_nodes.is_empty(), "Should have mesh nodes");
 

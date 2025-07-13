@@ -14,10 +14,10 @@ impl TestGpuContext {
     pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         // Create headless graphics API
         let graphics_api = WgpuGraphicsApi::new(None).await?;
-        
+
         // Create resource manager
         let resource_manager = ResourceManager::new();
-        
+
         Ok(TestGpuContext {
             graphics_api,
             resource_manager,
