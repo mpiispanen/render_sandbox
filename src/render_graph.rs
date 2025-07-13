@@ -86,6 +86,13 @@ pub trait RenderPass: Send + Sync {
     /// Get the resource declarations for this pass
     fn resources(&self) -> Vec<ResourceDeclaration>;
 
+    /// Initialize the render pass with GPU resources (called once before first execution)
+    fn initialize(
+        &mut self,
+        device: &wgpu::Device,
+        resource_manager: &ResourceManager,
+    ) -> Result<(), RenderGraphError>;
+
     /// Execute the render pass
     fn execute(
         &self,
@@ -158,6 +165,23 @@ impl RenderGraph {
         self.passes.clear();
         self.resource_declarations.clear();
         self.compiled = None;
+    }
+
+    /// Initialize all render passes with GPU resources
+    pub fn initialize_passes(
+        &mut self,
+        device: &wgpu::Device,
+        resource_manager: &ResourceManager,
+    ) -> Result<(), RenderGraphError> {
+        log::debug!("Initializing all render passes");
+
+        for (pass_id, pass) in self.passes.iter_mut() {
+            log::debug!("Initializing pass: {pass_id}");
+            pass.initialize(device, resource_manager)?;
+        }
+
+        log::debug!("All render passes initialized successfully");
+        Ok(())
     }
 
     /// Compile the render graph
@@ -340,50 +364,5 @@ impl RenderGraph {
 impl Default for RenderGraph {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-/// A simple placeholder render pass for testing
-pub struct PlaceholderPass {
-    id: PassId,
-    resources: Vec<ResourceDeclaration>,
-}
-
-impl PlaceholderPass {
-    pub fn new(name: &str) -> Self {
-        Self {
-            id: PassId::new(name),
-            resources: vec![],
-        }
-    }
-
-    pub fn with_resource(mut self, resource_id: &str, usage: ResourceUsage) -> Self {
-        self.resources.push(ResourceDeclaration {
-            id: ResourceId::new(resource_id),
-            usage,
-        });
-        self
-    }
-}
-
-impl RenderPass for PlaceholderPass {
-    fn id(&self) -> PassId {
-        self.id.clone()
-    }
-
-    fn resources(&self) -> Vec<ResourceDeclaration> {
-        self.resources.clone()
-    }
-
-    fn execute(
-        &self,
-        _device: &wgpu::Device,
-        _queue: &wgpu::Queue,
-        _resource_manager: &ResourceManager,
-        _encoder: &mut wgpu::CommandEncoder,
-    ) -> Result<(), RenderGraphError> {
-        log::debug!("Executing placeholder pass: {}", self.id);
-        // Placeholder implementation - does nothing
-        Ok(())
     }
 }
