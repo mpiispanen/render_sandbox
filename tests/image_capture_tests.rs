@@ -3,6 +3,7 @@ use render_sandbox::{
     image_capture::{ImageCapture, ImageFormat},
     resource_manager::ResourceManager,
 };
+use std::str::FromStr;
 
 #[tokio::test]
 async fn test_image_capture_integration() {
@@ -60,7 +61,7 @@ async fn test_image_capture_integration() {
             println!("Image capture integration test completed successfully");
         }
         Err(e) => {
-            println!("Skipping image capture integration test due to: {}", e);
+            println!("Skipping image capture integration test due to: {e}");
         }
     }
 }

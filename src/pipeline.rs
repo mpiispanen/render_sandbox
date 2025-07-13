@@ -171,7 +171,7 @@ impl ShaderRegistry {
 
     /// Register a shader with a name
     pub fn register_shader(&mut self, name: String, handle: Handle<wgpu::ShaderModule>) {
-        log::debug!("Registering shader: {}", name);
+        log::debug!("Registering shader: {name}");
         self.shaders.insert(name, handle.id());
     }
 
@@ -279,7 +279,7 @@ impl ShaderRegistry {
 
     /// Remove a shader from the registry
     pub fn remove_shader(&mut self, name: &str) -> Option<Handle<wgpu::ShaderModule>> {
-        self.shaders.remove(name).map(|id| Handle::from_id(id))
+        self.shaders.remove(name).map(Handle::from_id)
     }
 
     /// Clear all shaders
@@ -406,10 +406,10 @@ impl GraphicsPipelineBuilder {
         // Get shader handles from registry
         let vertex_shader = shader_registry
             .get_shader(&vertex_shader_name)
-            .ok_or_else(|| PipelineError::ShaderNotFound(vertex_shader_name))?;
+            .ok_or(PipelineError::ShaderNotFound(vertex_shader_name))?;
         let fragment_shader = shader_registry
             .get_shader(&fragment_shader_name)
-            .ok_or_else(|| PipelineError::ShaderNotFound(fragment_shader_name))?;
+            .ok_or(PipelineError::ShaderNotFound(fragment_shader_name))?;
 
         // Get shader modules - use references to avoid moving
         let vs_module = resource_manager
@@ -427,7 +427,7 @@ impl GraphicsPipelineBuilder {
             label: self
                 .label
                 .as_ref()
-                .map(|l| format!("{} Layout", l))
+                .map(|l| format!("{l} Layout"))
                 .as_deref(),
             bind_group_layouts: &[],
             push_constant_ranges: &[],
@@ -542,7 +542,7 @@ impl ComputePipelineBuilder {
         // Get shader handle from registry
         let compute_shader = shader_registry
             .get_shader(&compute_shader_name)
-            .ok_or_else(|| PipelineError::ShaderNotFound(compute_shader_name))?;
+            .ok_or(PipelineError::ShaderNotFound(compute_shader_name))?;
 
         // Get shader module
         let cs_module = resource_manager
@@ -554,7 +554,7 @@ impl ComputePipelineBuilder {
             label: self
                 .label
                 .as_ref()
-                .map(|l| format!("{} Layout", l))
+                .map(|l| format!("{l} Layout"))
                 .as_deref(),
             bind_group_layouts: &[],
             push_constant_ranges: &[],

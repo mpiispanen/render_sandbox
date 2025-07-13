@@ -140,7 +140,7 @@ fn test_graphics_pipeline_creation_with_device() {
         Err(e) => {
             // If we can't create a graphics API (headless environment without proper GPU),
             // just skip this test
-            println!("Skipping graphics pipeline creation test due to: {}", e);
+            println!("Skipping graphics pipeline creation test due to: {e}");
         }
     }
 }
@@ -176,7 +176,7 @@ fn test_pipeline_error_handling() {
             assert!(pipeline_result.is_err());
         }
         Err(e) => {
-            println!("Skipping pipeline error handling test due to: {}", e);
+            println!("Skipping pipeline error handling test due to: {e}");
         }
     }
 }
@@ -201,7 +201,7 @@ fn test_default_shaders_creation() {
             assert!(shader_registry.has_shader("forward_color"));
         }
         Err(e) => {
-            println!("Skipping default shaders test due to: {}", e);
+            println!("Skipping default shaders test due to: {e}");
         }
     }
 }

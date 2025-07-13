@@ -5,6 +5,7 @@
 
 use crate::resource_manager::{Handle, ResourceManager};
 use std::path::Path;
+use std::str::FromStr;
 
 /// Errors that can occur during image capture operations
 #[derive(Debug)]
@@ -45,9 +46,12 @@ impl ImageFormat {
             ImageFormat::Bmp => "bmp",
         }
     }
+}
 
-    /// Parse format from string
-    pub fn from_str(s: &str) -> Result<Self, ImageCaptureError> {
+impl FromStr for ImageFormat {
+    type Err = ImageCaptureError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "png" => Ok(ImageFormat::Png),
             "jpg" | "jpeg" => Ok(ImageFormat::Jpeg),
@@ -101,7 +105,7 @@ impl ImageCapture {
         // Calculate buffer size with alignment
         let unpadded_bytes_per_row = self.width * bytes_per_pixel;
         let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-        let padded_bytes_per_row = ((unpadded_bytes_per_row + align - 1) / align) * align;
+        let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(align) * align;
         let buffer_size = (padded_bytes_per_row * self.height) as u64;
 
         // Create staging buffer for copying texture data
@@ -154,7 +158,7 @@ impl ImageCapture {
 
         let unpadded_bytes_per_row = self.width * bytes_per_pixel;
         let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-        let padded_bytes_per_row = ((unpadded_bytes_per_row + align - 1) / align) * align;
+        let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(align) * align;
 
         // Copy texture to staging buffer
         encoder.copy_texture_to_buffer(
@@ -195,7 +199,7 @@ impl ImageCapture {
             .ok_or_else(|| {
                 ImageCaptureError::InvalidTexture("Staging buffer not initialized".to_string())
             })
-            .map(|id| Handle::from_id(id))?;
+            .map(Handle::from_id)?;
 
         let staging_buffer_resource = resource_manager
             .get_buffer(staging_buffer_handle)
@@ -236,7 +240,7 @@ impl ImageCapture {
 
         let unpadded_bytes_per_row = self.width * bytes_per_pixel;
         let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-        let padded_bytes_per_row = ((unpadded_bytes_per_row + align - 1) / align) * align;
+        let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(align) * align;
 
         // Extract unpadded data
         let mut image_data =
@@ -297,7 +301,7 @@ impl ImageCapture {
 
     /// Get the staging buffer handle if initialized
     pub fn staging_buffer(&self) -> Option<Handle<wgpu::Buffer>> {
-        self.staging_buffer_id.map(|id| Handle::from_id(id))
+        self.staging_buffer_id.map(Handle::from_id)
     }
 
     /// Get the capture dimensions
