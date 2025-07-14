@@ -22,5 +22,15 @@ target
 
 
 # Added by cargo
-
 /target
+
+# Visual regression testing temporary directories
+outputs/
+diffs/
+*.png
+*.jpg
+*.jpeg
+*.bmp
+
+# Exclude outputs from version control (temporary test images)
+# Golden images are tracked via LFS in .gitattributes

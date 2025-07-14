@@ -129,6 +129,66 @@ This project uses GitHub Actions for continuous integration. The CI pipeline run
 - Clippy linting
 - Unit tests
 - Cross-platform builds (Linux, macOS, Windows)
+- Visual regression testing
+
+## Visual Regression Testing
+
+This project includes a comprehensive visual regression testing system that automatically compares rendered output images against reference "golden" images to detect visual changes.
+
+### How It Works
+
+1. **Automated Testing**: On every pull request, the system runs `scripts/generate_test_images.py` to generate test images
+2. **High-fidelity Comparison**: Uses NVIDIA FLIP for precise pixel-level image comparison
+3. **Interactive Workflow**: Visual differences are reported in PR comments with side-by-side comparisons
+4. **Easy Acceptance**: Accept changes by commenting `/accept-image <filename>` on the PR
+
+### Example Workflow
+
+When you open a PR with visual changes, you might see a comment like:
+
+```
+🔄 **Changed Image:** `basic_render_800x600.png`
+
+**FLIP Statistics:**
+- **Mean Error:** 0.025
+- **Weighted Median:** 0.018
+
+| Difference | New Output |
+|------------|------------|
+| ![Difference](./diffs/diff_basic_render_800x600.png) | ![New Output](./outputs/basic_render_800x600.png) |
+
+To accept this change, comment: `/accept-image basic_render_800x600.png`
+```
+
+### Directory Structure
+
+- `outputs/` - Generated test images (temporary, not committed)
+- `diffs/` - Visual difference images (temporary, not committed)  
+- `golden/` - Reference images stored with Git LFS
+- `scripts/generate_test_images.py` - Test image generation script
+
+### Adding New Visual Tests
+
+To add new visual test cases, edit `scripts/generate_test_images.py` and add entries to the `test_cases` list:
+
+```python
+{
+    'name': 'my_new_test',
+    'width': 1024,
+    'height': 768,
+    'samples': 1,
+    'description': 'Description of what this test validates'
+}
+```
+
+### Git LFS Setup
+
+The project uses Git LFS to efficiently store reference images. When cloning:
+
+```bash
+git lfs install
+git clone https://github.com/mpiispanen/render_sandbox.git
+```
 
 ## License
 
