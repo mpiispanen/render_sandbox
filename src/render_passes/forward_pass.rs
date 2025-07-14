@@ -77,20 +77,24 @@ impl RenderPass for ForwardRenderPass {
         // Create default shaders for the forward pass
         let _shader_registry = ShaderRegistry::new();
 
-        // Create a simple forward shader that works with position-only vertices
+        // Create a simple forward shader that generates a triangle without vertex input
         let forward_shader_source = r#"
-            struct VertexInput {
-                @location(0) position: vec3<f32>,
-            }
-
             struct VertexOutput {
                 @builtin(position) clip_position: vec4<f32>,
             }
 
             @vertex
-            fn vs_main(model: VertexInput) -> VertexOutput {
+            fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
                 var out: VertexOutput;
-                out.clip_position = vec4<f32>(model.position, 1.0);
+                
+                // Generate triangle vertices procedurally
+                var positions = array<vec2<f32>, 3>(
+                    vec2<f32>(0.0, 0.5),   // Top
+                    vec2<f32>(-0.5, -0.5), // Bottom left  
+                    vec2<f32>(0.5, -0.5)   // Bottom right
+                );
+                
+                out.clip_position = vec4<f32>(positions[vertex_index], 0.0, 1.0);
                 return out;
             }
 
@@ -107,10 +111,10 @@ impl RenderPass for ForwardRenderPass {
             source: wgpu::ShaderSource::Wgsl(forward_shader_source.into()),
         });
 
-        // Create render pipeline using the new pipeline builder
+        // Create render pipeline without vertex buffer input since we generate vertices procedurally
         let vertex_layout = VertexLayout::position_only();
-        let (mut vertex_buffer_layout, attributes) = vertex_layout.build();
-        vertex_buffer_layout.attributes = &attributes;
+        let (_vertex_buffer_layout, _attributes) = vertex_layout.build();
+        // Note: We don't use the vertex layout since we generate vertices in the shader
 
         // Create pipeline layout
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -141,7 +145,7 @@ impl RenderPass for ForwardRenderPass {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[vertex_buffer_layout],
+                buffers: &[], // No vertex buffers needed since we generate vertices procedurally
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
