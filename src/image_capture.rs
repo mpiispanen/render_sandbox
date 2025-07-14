@@ -29,6 +29,44 @@ impl std::fmt::Display for ImageCaptureError {
 
 impl std::error::Error for ImageCaptureError {}
 
+/// Row and pixel size calculations for image capture
+#[derive(Debug, Clone)]
+struct RowAndPixelSizes {
+    bytes_per_pixel: u32,
+    unpadded_bytes_per_row: u32,
+    padded_bytes_per_row: u32,
+}
+
+/// Calculate row and pixel sizes for a given texture format and width
+fn calculate_row_and_pixel_sizes(
+    format: wgpu::TextureFormat,
+    width: u32,
+) -> Result<RowAndPixelSizes, ImageCaptureError> {
+    // Calculate bytes per pixel based on format
+    let bytes_per_pixel = match format {
+        wgpu::TextureFormat::Rgba8Unorm
+        | wgpu::TextureFormat::Rgba8UnormSrgb
+        | wgpu::TextureFormat::Bgra8Unorm
+        | wgpu::TextureFormat::Bgra8UnormSrgb => 4,
+        _ => {
+            return Err(ImageCaptureError::UnsupportedFormat(format!(
+                "Texture format {format:?} not supported for image capture"
+            )))
+        }
+    };
+
+    // Calculate buffer size with alignment
+    let unpadded_bytes_per_row = width * bytes_per_pixel;
+    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+    let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(align) * align;
+
+    Ok(RowAndPixelSizes {
+        bytes_per_pixel,
+        unpadded_bytes_per_row,
+        padded_bytes_per_row,
+    })
+}
+
 /// Supported image output formats
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImageFormat {
@@ -88,25 +126,9 @@ impl ImageCapture {
         device: &wgpu::Device,
         resource_manager: &mut ResourceManager,
     ) -> Result<(), ImageCaptureError> {
-        // Calculate bytes per pixel based on format
-        let bytes_per_pixel = match self.format {
-            wgpu::TextureFormat::Rgba8Unorm
-            | wgpu::TextureFormat::Rgba8UnormSrgb
-            | wgpu::TextureFormat::Bgra8Unorm
-            | wgpu::TextureFormat::Bgra8UnormSrgb => 4,
-            _ => {
-                return Err(ImageCaptureError::UnsupportedFormat(format!(
-                    "Texture format {:?} not supported for image capture",
-                    self.format
-                )))
-            }
-        };
-
-        // Calculate buffer size with alignment
-        let unpadded_bytes_per_row = self.width * bytes_per_pixel;
-        let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-        let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(align) * align;
-        let buffer_size = (padded_bytes_per_row * self.height) as u64;
+        // Calculate row and pixel sizes
+        let sizes = calculate_row_and_pixel_sizes(self.format, self.width)?;
+        let buffer_size = (sizes.padded_bytes_per_row * self.height) as u64;
 
         // Create staging buffer for copying texture data
         let staging_buffer = resource_manager.create_buffer(
@@ -142,23 +164,8 @@ impl ImageCapture {
             .get_buffer(staging_buffer_handle)
             .map_err(|e| ImageCaptureError::InvalidTexture(e.to_string()))?;
 
-        // Calculate bytes per pixel and row padding
-        let bytes_per_pixel = match self.format {
-            wgpu::TextureFormat::Rgba8Unorm
-            | wgpu::TextureFormat::Rgba8UnormSrgb
-            | wgpu::TextureFormat::Bgra8Unorm
-            | wgpu::TextureFormat::Bgra8UnormSrgb => 4,
-            _ => {
-                return Err(ImageCaptureError::UnsupportedFormat(format!(
-                    "Texture format {:?} not supported",
-                    self.format
-                )))
-            }
-        };
-
-        let unpadded_bytes_per_row = self.width * bytes_per_pixel;
-        let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-        let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(align) * align;
+        // Calculate row and pixel sizes
+        let sizes = calculate_row_and_pixel_sizes(self.format, self.width)?;
 
         // Copy texture to staging buffer
         encoder.copy_texture_to_buffer(
@@ -172,7 +179,7 @@ impl ImageCapture {
                 buffer: staging_buffer_resource,
                 layout: wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: Some(padded_bytes_per_row),
+                    bytes_per_row: Some(sizes.padded_bytes_per_row),
                     rows_per_image: Some(self.height),
                 },
             },
@@ -224,30 +231,15 @@ impl ImageCapture {
         // Read the data
         let data = buffer_slice.get_mapped_range();
 
-        // Calculate image parameters
-        let bytes_per_pixel = match self.format {
-            wgpu::TextureFormat::Rgba8Unorm
-            | wgpu::TextureFormat::Rgba8UnormSrgb
-            | wgpu::TextureFormat::Bgra8Unorm
-            | wgpu::TextureFormat::Bgra8UnormSrgb => 4,
-            _ => {
-                return Err(ImageCaptureError::UnsupportedFormat(format!(
-                    "Texture format {:?} not supported",
-                    self.format
-                )))
-            }
-        };
-
-        let unpadded_bytes_per_row = self.width * bytes_per_pixel;
-        let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-        let padded_bytes_per_row = unpadded_bytes_per_row.div_ceil(align) * align;
+        // Calculate row and pixel sizes
+        let sizes = calculate_row_and_pixel_sizes(self.format, self.width)?;
 
         // Extract unpadded data
         let mut image_data =
-            Vec::with_capacity((self.width * self.height * bytes_per_pixel) as usize);
+            Vec::with_capacity((self.width * self.height * sizes.bytes_per_pixel) as usize);
         for row in 0..self.height {
-            let start = (row * padded_bytes_per_row) as usize;
-            let end = start + unpadded_bytes_per_row as usize;
+            let start = (row * sizes.padded_bytes_per_row) as usize;
+            let end = start + sizes.unpadded_bytes_per_row as usize;
             if end <= data.len() {
                 image_data.extend_from_slice(&data[start..end]);
             }
@@ -257,7 +249,7 @@ impl ImageCapture {
         let final_data = if matches!(
             self.format,
             wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb
-        ) && bytes_per_pixel == 4
+        ) && sizes.bytes_per_pixel == 4
         {
             // Convert BGRA to RGBA
             let mut rgba_data = Vec::with_capacity(image_data.len());
