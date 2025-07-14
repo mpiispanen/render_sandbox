@@ -5,6 +5,7 @@ pub mod engine;
 pub mod gltf_loader;
 pub mod graphics_api;
 pub mod render_graph;
+pub mod render_passes;
 pub mod renderer;
 pub mod resource_manager;
 pub mod scene;

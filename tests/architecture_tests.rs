@@ -1,4 +1,5 @@
-use render_sandbox::render_graph::{PlaceholderPass, RenderGraph, ResourceUsage};
+use render_sandbox::render_graph::{RenderGraph, ResourceUsage};
+use render_sandbox::render_passes::PlaceholderPass;
 use render_sandbox::renderer::RendererConfig;
 use render_sandbox::resource_manager::ResourceManager;
 use render_sandbox::scene::{Camera, NodeContent, Scene, SceneNode, Transform};

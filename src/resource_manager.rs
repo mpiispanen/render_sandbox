@@ -69,6 +69,7 @@ impl std::error::Error for ResourceError {}
 /// Manages GPU resources with handle-based access
 pub struct ResourceManager {
     resources: HashMap<HandleId, Resource>,
+    named_resources: HashMap<String, HandleId>,
 }
 
 impl ResourceManager {
@@ -77,6 +78,7 @@ impl ResourceManager {
         log::info!("Creating resource manager");
         Self {
             resources: HashMap::new(),
+            named_resources: HashMap::new(),
         }
     }
 
@@ -307,6 +309,23 @@ impl ResourceManager {
     pub fn clear(&mut self) {
         log::info!("Clearing all resources");
         self.resources.clear();
+        self.named_resources.clear();
+    }
+
+    /// Register a resource with a name for render graph access
+    pub fn register_named_resource<T>(&mut self, name: &str, handle: Handle<T>) {
+        log::debug!("Registering named resource: {} -> {:?}", name, handle.id());
+        self.named_resources.insert(name.to_string(), handle.id());
+    }
+
+    /// Get a named resource handle
+    pub fn get_named_resource<T>(&self, name: &str) -> Option<Handle<T>> {
+        self.named_resources.get(name).map(|&id| Handle::new(id))
+    }
+
+    /// Check if a named resource exists
+    pub fn has_named_resource(&self, name: &str) -> bool {
+        self.named_resources.contains_key(name)
     }
 }
 

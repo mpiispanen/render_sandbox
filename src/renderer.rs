@@ -1,5 +1,6 @@
 use crate::graphics_api::{GraphicsApi, GraphicsError};
-use crate::render_graph::{PlaceholderPass, RenderGraph, RenderGraphError, ResourceUsage};
+use crate::render_graph::{RenderGraph, RenderGraphError, ResourceUsage};
+use crate::render_passes::{ForwardRenderPass, PlaceholderPass};
 use crate::resource_manager::ResourceManager;
 use crate::scene::{NodeContent, Scene};
 
@@ -129,14 +130,24 @@ impl Renderer {
             PlaceholderPass::new("ClearPass").with_resource("BackBuffer", ResourceUsage::Write);
         self.render_graph.add_pass(Box::new(clear_pass));
 
-        // Forward render pass
-        let forward_pass = PlaceholderPass::new("ForwardPass")
+        // Forward render pass - use actual ForwardRenderPass instead of placeholder
+        let (width, height) = self.graphics_api.surface_size();
+        let surface_format = self.graphics_api.surface_format();
+        let forward_pass = ForwardRenderPass::new("ForwardPass")
             .with_resource("BackBuffer", ResourceUsage::ReadWrite)
-            .with_resource("DepthBuffer", ResourceUsage::ReadWrite);
+            .with_resource("DepthBuffer", ResourceUsage::ReadWrite)
+            .with_clear_color([0.1, 0.2, 0.3, 1.0]) // Dark blue background
+            .with_resolution(width, height)
+            .with_surface_format(surface_format);
         self.render_graph.add_pass(Box::new(forward_pass));
 
         // Compile the render graph
         self.render_graph.compile()?;
+
+        // Initialize all render passes with GPU resources
+        let device = self.graphics_api.device();
+        self.render_graph
+            .initialize_passes(device, &self.resource_manager)?;
 
         log::debug!("Default render graph setup complete");
         Ok(())
@@ -149,8 +160,8 @@ impl Renderer {
         let device = self.graphics_api.device();
         let (width, height) = self.graphics_api.surface_size();
 
-        // Create depth buffer
-        let _depth_texture = self.resource_manager.create_texture(
+        // Create depth buffer and register it as "DepthBuffer" for the render graph
+        let depth_texture = self.resource_manager.create_texture(
             device,
             &wgpu::TextureDescriptor {
                 label: Some("Depth Texture"),
@@ -167,8 +178,31 @@ impl Renderer {
                 view_formats: &[],
             },
         );
+        self.resource_manager
+            .register_named_resource("DepthBuffer", depth_texture);
 
-        log::debug!("Default resources created");
+        // Create back buffer (color target) and register it as "BackBuffer" for the render graph
+        let back_buffer = self.resource_manager.create_texture(
+            device,
+            &wgpu::TextureDescriptor {
+                label: Some("Back Buffer"),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: self.config.msaa_samples,
+                dimension: wgpu::TextureDimension::D2,
+                format: self.graphics_api.surface_format(),
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                view_formats: &[],
+            },
+        );
+        self.resource_manager
+            .register_named_resource("BackBuffer", back_buffer);
+
+        log::debug!("Default resources created and registered");
         Ok(())
     }
 
