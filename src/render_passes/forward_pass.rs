@@ -38,10 +38,9 @@ fn example_pipeline_creation_with_registry(
 
 /// Helper function to create a forward render pipeline using the pipeline abstraction.
 /// This demonstrates the intended usage pattern of ShaderRegistry and GraphicsPipelineBuilder.
-///
-/// Note: Due to current trait constraints (immutable ResourceManager in initialize),
-/// this function creates shaders directly but uses the VertexLayout abstraction and
-/// follows the same patterns that GraphicsPipelineBuilder uses internally.
+/// This function is kept for documentation purposes but is no longer used since we now
+/// properly use the abstraction in the initialize method with mutable ResourceManager.
+#[allow(dead_code)]
 fn create_forward_pipeline(
     device: &wgpu::Device,
     surface_format: wgpu::TextureFormat,
@@ -220,7 +219,7 @@ impl RenderPass for ForwardRenderPass {
     fn initialize(
         &mut self,
         device: &wgpu::Device,
-        _resource_manager: &ResourceManager,
+        resource_manager: &mut ResourceManager,
     ) -> Result<(), RenderGraphError> {
         if self.initialized {
             return Ok(());
@@ -228,13 +227,14 @@ impl RenderPass for ForwardRenderPass {
 
         log::debug!("Initializing forward render pass: {}", self.id);
 
-        // Use the helper function to create the pipeline with proper abstraction structure
-        let render_pipeline = create_forward_pipeline(device, self.surface_format)?;
+        // Now we can properly use the pipeline abstraction with mutable ResourceManager!
+        let render_pipeline =
+            example_pipeline_creation_with_registry(device, resource_manager, self.surface_format)?;
 
         self.render_pipeline = Some(render_pipeline);
         self.initialized = true;
 
-        log::debug!("Forward render pass initialized successfully with pipeline abstraction");
+        log::debug!("Forward render pass initialized successfully with full pipeline abstraction");
         Ok(())
     }
 
