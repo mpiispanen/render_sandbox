@@ -16,17 +16,49 @@ fn example_pipeline_creation_with_registry(
     // Create and configure shader registry
     let mut shader_registry = ShaderRegistry::new();
 
-    // Create default shaders (this demonstrates the intended pattern)
-    shader_registry
-        .create_default_shaders(device, resource_manager)
-        .map_err(|e| RenderGraphError::ExecutionFailed(format!("Failed to create shaders: {e}")))?;
+    // Create a procedural shader that doesn't need vertex buffers
+    let procedural_shader_source = r#"
+        struct VertexOutput {
+            @builtin(position) clip_position: vec4<f32>,
+        }
 
-    // Use GraphicsPipelineBuilder with the registry
+        @vertex
+        fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
+            var out: VertexOutput;
+            
+            // Generate triangle vertices procedurally
+            var positions = array<vec2<f32>, 3>(
+                vec2<f32>(0.0, 0.5),   // Top
+                vec2<f32>(-0.5, -0.5), // Bottom left  
+                vec2<f32>(0.5, -0.5)   // Bottom right
+            );
+            
+            out.clip_position = vec4<f32>(positions[vertex_index], 0.0, 1.0);
+            return out;
+        }
+
+        @fragment
+        fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+            return vec4<f32>(0.8, 0.2, 0.3, 1.0);
+        }
+    "#;
+
+    // Register the procedural shader
+    shader_registry
+        .create_shader_from_wgsl(
+            device,
+            resource_manager,
+            "forward_procedural".to_string(),
+            procedural_shader_source,
+        )
+        .map_err(|e| RenderGraphError::ExecutionFailed(format!("Failed to create shader: {e}")))?;
+
+    // Use GraphicsPipelineBuilder with empty vertex layout for procedural rendering
     let pipeline = GraphicsPipelineBuilder::new()
         .with_label("Forward Render Pipeline".to_string())
-        .with_vertex_shader("forward_simple".to_string())
-        .with_fragment_shader("forward_simple".to_string())
-        .with_vertex_layout(VertexLayout::position_only())
+        .with_vertex_shader("forward_procedural".to_string())
+        .with_fragment_shader("forward_procedural".to_string())
+        .with_vertex_layout(VertexLayout::new()) // Empty layout for procedural generation
         .with_color_format(surface_format)
         .build(device, resource_manager, &shader_registry)
         .map_err(|e| {
