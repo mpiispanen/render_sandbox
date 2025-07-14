@@ -138,7 +138,8 @@ impl Renderer {
             .with_resource("DepthBuffer", ResourceUsage::ReadWrite)
             .with_clear_color([0.1, 0.2, 0.3, 1.0]) // Dark blue background
             .with_resolution(width, height)
-            .with_surface_format(surface_format);
+            .with_surface_format(surface_format)
+            .with_sample_count(self.config.msaa_samples);
         self.render_graph.add_pass(Box::new(forward_pass));
 
         // Compile the render graph
