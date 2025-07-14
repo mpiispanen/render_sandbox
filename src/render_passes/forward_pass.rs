@@ -93,7 +93,7 @@ fn create_forward_pipeline(
 
     // Use the VertexLayout abstraction (this part works with current interface)
     let vertex_layout = VertexLayout::new(); // Empty layout for procedural generation
-    let (vertex_buffer_layout, _attributes) = vertex_layout.build();
+    let (_vertex_buffer_layout, _attributes) = vertex_layout.build();
 
     // Use GraphicsPipelineBuilder pattern to get proper defaults
     let _pipeline_builder = GraphicsPipelineBuilder::new().with_color_format(surface_format);
@@ -129,7 +129,7 @@ fn create_forward_pipeline(
         vertex: wgpu::VertexState {
             module: &shader,
             entry_point: "vs_main",
-            buffers: &[vertex_buffer_layout],
+            buffers: &[], // No vertex buffers needed since we generate vertices procedurally
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
