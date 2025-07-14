@@ -27,10 +27,14 @@ target
 # Visual regression testing temporary directories
 outputs/
 diffs/
-*.png
-*.jpg
-*.jpeg
-*.bmp
 
-# Exclude outputs from version control (temporary test images)
+# Exclude output images from version control (temporary test images)
 # Golden images are tracked via LFS in .gitattributes
+outputs/**/*.png
+outputs/**/*.jpg
+outputs/**/*.jpeg
+outputs/**/*.bmp
+diffs/**/*.png
+diffs/**/*.jpg
+diffs/**/*.jpeg
+diffs/**/*.bmp
