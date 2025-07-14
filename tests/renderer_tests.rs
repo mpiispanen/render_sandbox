@@ -45,9 +45,11 @@ fn test_render_stats_default() {
 
 #[test]
 fn test_render_stats_clone() {
-    let mut stats = RenderStats::default();
-    stats.frame_count = 100;
-    stats.draw_calls = 50;
+    let stats = RenderStats {
+        frame_count: 100,
+        draw_calls: 50,
+        ..Default::default()
+    };
 
     let cloned_stats = stats.clone();
     assert_eq!(cloned_stats.frame_count, 100);
@@ -105,7 +107,7 @@ fn test_renderer_configuration_validation() {
 
         // Clear color components should be in valid range [0.0, 1.0]
         for component in config.clear_color {
-            assert!(component >= 0.0 && component <= 1.0);
+            assert!((0.0..=1.0).contains(&component));
         }
     }
 }
@@ -137,10 +139,7 @@ fn test_placeholder_engine_uses_args_resolution() {
             assert_eq!(
                 frame_data.len(),
                 expected_size,
-                "Frame data size should match resolution {}x{} = {} bytes",
-                width,
-                height,
-                expected_size
+                "Frame data size should match resolution {width}x{height} = {expected_size} bytes"
             );
         } else {
             panic!("Expected frame data for headless mode");

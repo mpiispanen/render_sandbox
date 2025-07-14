@@ -17,10 +17,7 @@ fn test_graphics_api_creation() {
         }
         Err(e) => {
             // Graphics API creation can fail in headless environments without GPU
-            println!(
-                "Graphics API creation failed as expected in test environment: {}",
-                e
-            );
+            println!("Graphics API creation failed as expected in test environment: {e}");
         }
     }
 }
@@ -41,10 +38,7 @@ fn test_renderer_with_custom_samples() {
         }
         Err(e) => {
             // Graphics API creation can fail in headless environments without GPU
-            println!(
-                "Graphics API creation failed as expected in test environment: {}",
-                e
-            );
+            println!("Graphics API creation failed as expected in test environment: {e}");
         }
     }
 }
@@ -68,10 +62,7 @@ fn test_renderer_with_different_resolutions() {
             }
             Err(e) => {
                 // Graphics API creation can fail in headless environments without GPU
-                println!(
-                    "Graphics API creation failed as expected in test environment for {}x{}: {}",
-                    width, height, e
-                );
+                println!("Graphics API creation failed as expected in test environment for {width}x{height}: {e}");
             }
         }
     }
@@ -88,7 +79,7 @@ fn test_renderer_sample_count_validation() {
             // Test with different sample counts - the graphics API will validate them
             let test_samples = vec![1, 4, 8]; // Use only valid WebGPU guaranteed values
 
-            for samples in test_samples {
+            if let Some(samples) = test_samples.into_iter().next() {
                 // Validate the sample count first, then create renderer
                 let validated_samples = graphics_api.validate_sample_count(samples);
 
@@ -106,17 +97,11 @@ fn test_renderer_sample_count_validation() {
                 } else {
                     println!("Graphics API creation failed for sample count test");
                 }
-
-                // Only test one iteration since graphics API creation may fail
-                break;
             }
         }
         Err(e) => {
             // Graphics API creation can fail in headless environments without GPU
-            println!(
-                "Graphics API creation failed as expected in test environment: {}",
-                e
-            );
+            println!("Graphics API creation failed as expected in test environment: {e}");
         }
     }
 }
