@@ -32,11 +32,12 @@ fn test_forward_renderpass_enabled() {
 
     // Create a headless graphics API for testing
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
-            let mut renderer = Renderer::new(Box::new(graphics_api));
+            let mut renderer = Renderer::new(Box::new(graphics_api), 1);
 
             // Initialize the renderer - this should set up the forward renderpass
             let init_result = renderer.initialize();
@@ -120,11 +121,12 @@ fn test_forward_renderpass_execution() {
     // Test that the forward renderpass can execute without errors
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
-            let mut renderer = Renderer::new(Box::new(graphics_api));
+            let mut renderer = Renderer::new(Box::new(graphics_api), 1);
 
             // Initialize the renderer
             renderer
@@ -195,11 +197,12 @@ fn test_render_stats_with_forward_pass() {
     // Test that rendering stats properly reflect forward renderpass usage
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
-            let mut renderer = Renderer::new(Box::new(graphics_api));
+            let mut renderer = Renderer::new(Box::new(graphics_api), 1);
             renderer.initialize().expect("Renderer should initialize");
 
             let scene = Scene::new();
@@ -269,6 +272,10 @@ fn test_renderer_sample_count_validation() {
                 }
             }
         }
+        Err(e) => {
+            // Graphics API creation can fail in headless environments without GPU
+            println!("Graphics API creation failed as expected in test environment: {e}");
+        }
     }
 }
 
@@ -277,11 +284,12 @@ fn test_forward_renderpass_with_scene_content() {
     // Test that forward renderpass works with scene content
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
-            let mut renderer = Renderer::new(Box::new(graphics_api));
+            let mut renderer = Renderer::new(Box::new(graphics_api), 1);
             renderer.initialize().expect("Renderer should initialize");
 
             let mut scene = Scene::new();
