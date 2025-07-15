@@ -422,6 +422,13 @@ impl GraphicsPipelineBuilder {
         let (mut vertex_buffer_layout, attributes) = self.vertex_layout.build();
         vertex_buffer_layout.attributes = &attributes;
 
+        // For procedural shaders that don't need vertex buffers, use empty slice
+        let vertex_buffers: &[wgpu::VertexBufferLayout] = if attributes.is_empty() {
+            &[] // No vertex buffers needed for procedural shaders
+        } else {
+            &[vertex_buffer_layout] // Use the vertex buffer layout for regular shaders
+        };
+
         // Create pipeline layout (empty for now, can be extended later)
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: self
@@ -461,7 +468,7 @@ impl GraphicsPipelineBuilder {
             vertex: wgpu::VertexState {
                 module: vs_module,
                 entry_point: "vs_main",
-                buffers: &[vertex_buffer_layout],
+                buffers: vertex_buffers,
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
