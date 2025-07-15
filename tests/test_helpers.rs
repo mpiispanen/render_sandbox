@@ -13,7 +13,7 @@ impl TestGpuContext {
     /// Create a new test GPU context in headless mode
     pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         // Create headless graphics API
-        let graphics_api = WgpuGraphicsApi::new(None).await?;
+        let graphics_api = WgpuGraphicsApi::new(None, 800, 600).await?;
 
         // Create resource manager
         let resource_manager = ResourceManager::new();

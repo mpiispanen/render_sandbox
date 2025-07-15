@@ -10,6 +10,7 @@ pub struct ForwardRenderPass {
     clear_color: [f64; 4],
     resolution: (u32, u32),
     surface_format: wgpu::TextureFormat,
+    sample_count: u32,
     render_pipeline: Option<wgpu::RenderPipeline>,
     initialized: bool,
 }
@@ -22,6 +23,7 @@ impl ForwardRenderPass {
             clear_color: [0.0, 0.0, 0.0, 1.0],
             resolution: (800, 600), // Default resolution
             surface_format: wgpu::TextureFormat::Bgra8UnormSrgb, // Default format, should be overridden
+            sample_count: 1, // Default sample count, should be overridden
             render_pipeline: None,
             initialized: false,
         }
@@ -47,6 +49,11 @@ impl ForwardRenderPass {
 
     pub fn with_surface_format(mut self, format: wgpu::TextureFormat) -> Self {
         self.surface_format = format;
+        self
+    }
+
+    pub fn with_sample_count(mut self, sample_count: u32) -> Self {
+        self.sample_count = sample_count;
         self
     }
 }
@@ -138,7 +145,7 @@ impl RenderPass for ForwardRenderPass {
                 bias: wgpu::DepthBiasState::default(),
             }),
             multisample: wgpu::MultisampleState {
-                count: 1,
+                count: self.sample_count,
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },

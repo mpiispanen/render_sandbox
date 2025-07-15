@@ -11,6 +11,8 @@ fn test_default_args() {
     assert_eq!(args.samples, 1);
     assert!(!args.verbose);
     assert_eq!(args.log_level, "info");
+    assert!(!args.headless);
+    assert_eq!(args.gltf_path, "test_assets/triangle.gltf");
 }
 
 #[test]
@@ -121,4 +123,54 @@ fn test_headless_flag() {
 fn test_default_headless_false() {
     let args = Args::parse_from(["render_sandbox"]);
     assert!(!args.headless);
+}
+
+#[test]
+fn test_gltf_path_default() {
+    let args = Args::parse_from(["render_sandbox"]);
+    assert_eq!(args.gltf_path, "test_assets/triangle.gltf");
+}
+
+#[test]
+fn test_gltf_path_short_arg() {
+    let args = Args::parse_from(["render_sandbox", "-g", "custom/scene.gltf"]);
+    assert_eq!(args.gltf_path, "custom/scene.gltf");
+}
+
+#[test]
+fn test_gltf_path_long_arg() {
+    let args = Args::parse_from(["render_sandbox", "--gltf", "path/to/model.gltf"]);
+    assert_eq!(args.gltf_path, "path/to/model.gltf");
+}
+
+#[test]
+fn test_all_args_together() {
+    let args = Args::parse_from([
+        "render_sandbox",
+        "--width",
+        "1920",
+        "--height",
+        "1080",
+        "--output",
+        "result.jpg",
+        "--format",
+        "jpg",
+        "--samples",
+        "4",
+        "--verbose",
+        "--log-level",
+        "debug",
+        "--headless",
+        "--gltf",
+        "assets/complex_scene.gltf",
+    ]);
+    assert_eq!(args.width, 1920);
+    assert_eq!(args.height, 1080);
+    assert_eq!(args.output, "result.jpg");
+    assert_eq!(args.format, "jpg");
+    assert_eq!(args.samples, 4);
+    assert!(args.verbose);
+    assert_eq!(args.log_level, "debug");
+    assert!(args.headless);
+    assert_eq!(args.gltf_path, "assets/complex_scene.gltf");
 }
