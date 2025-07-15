@@ -81,10 +81,17 @@ pub struct Renderer {
 impl Renderer {
     /// Create a new renderer with specified MSAA samples
     pub fn new(graphics_api: Box<dyn GraphicsApi>, requested_samples: u32) -> Self {
-        // Validate the sample count with the graphics API
-        let msaa_samples = graphics_api.validate_sample_count(requested_samples);
+        // Validate the sample count with the graphics API for the formats we'll use
+        let surface_format = graphics_api.surface_format();
+        let formats = &[
+            surface_format,                    // Back buffer (color attachment)
+            wgpu::TextureFormat::Depth32Float, // Depth buffer
+        ];
+        let msaa_samples = graphics_api.validate_sample_count(requested_samples, formats);
 
-        log::info!("Creating renderer with {msaa_samples} MSAA samples");
+        log::info!(
+            "Creating renderer with {msaa_samples} MSAA samples for formats: {formats:?}"
+        );
 
         let config = RendererConfig {
             msaa_samples,

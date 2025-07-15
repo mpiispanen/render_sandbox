@@ -33,8 +33,9 @@ pub trait GraphicsApi: Send + Sync {
     where
         Self: Sized;
 
-    /// Validate and clamp MSAA sample count to supported values
-    fn validate_sample_count(&self, requested_samples: u32) -> u32;
+    /// Validate and clamp MSAA sample count to supported values for given texture formats
+    fn validate_sample_count(&self, requested_samples: u32, formats: &[wgpu::TextureFormat])
+        -> u32;
 
     /// Resize the surface
     fn resize(&mut self, width: u32, height: u32);
@@ -162,23 +163,65 @@ impl GraphicsApi for WgpuGraphicsApi {
         Self::new_impl(window, width, height).await
     }
 
-    fn validate_sample_count(&self, requested_samples: u32) -> u32 {
-        // For maximum compatibility, use only WebGPU spec guaranteed sample counts
-        // The WebGPU spec guarantees [1, 4] samples for depth formats like Depth32Float
-        // Using only these values ensures compatibility across all devices and environments
-        let valid_samples = [1, 4];
+    fn validate_sample_count(
+        &self,
+        requested_samples: u32,
+        formats: &[wgpu::TextureFormat],
+    ) -> u32 {
+        // For now, we'll use a conservative approach based on format types
+        // TODO: Query actual device capabilities when wgpu provides a better API for this
+
+        let mut conservative_samples = vec![1, 2, 4, 8, 16]; // Start optimistic
+
+        for &format in formats {
+            let format_samples = match format {
+                // Depth formats: WebGPU spec only guarantees [1, 4]
+                wgpu::TextureFormat::Depth32Float
+                | wgpu::TextureFormat::Depth24Plus
+                | wgpu::TextureFormat::Depth24PlusStencil8 => {
+                    vec![1, 4] // Conservative WebGPU spec guarantee
+                }
+                // Color formats: typically support more, but be conservative for now
+                _ => vec![1, 2, 4, 8, 16], // Most color formats support these
+            };
+
+            log::debug!(
+                "Format {format:?} assumed to support sample counts: {format_samples:?}"
+            );
+
+            // Keep intersection of supported sample counts across all formats
+            conservative_samples.retain(|sample| format_samples.contains(sample));
+        }
+
+        // If we have depth formats, limit to WebGPU guaranteed values for safety
+        let has_depth_format = formats.iter().any(|&fmt| {
+            matches!(
+                fmt,
+                wgpu::TextureFormat::Depth32Float
+                    | wgpu::TextureFormat::Depth24Plus
+                    | wgpu::TextureFormat::Depth24PlusStencil8
+            )
+        });
+
+        if has_depth_format {
+            conservative_samples.retain(|&sample| sample == 1 || sample == 4);
+        }
+
+        log::debug!(
+            "Final supported sample counts for formats {formats:?}: {conservative_samples:?}"
+        );
 
         // Find the closest valid sample count that doesn't exceed the requested value
-        let clamped = valid_samples
+        let clamped = conservative_samples
             .iter()
             .rev() // Start from highest to find the best match
             .find(|&&samples| samples <= requested_samples)
             .copied()
             .unwrap_or(1); // Default to 1 if no valid value found
 
-        if clamped != requested_samples {
+        if clamped != requested_samples && !conservative_samples.is_empty() {
             log::warn!(
-                "MSAA sample count {requested_samples} is not supported, clamping to {clamped} (using WebGPU spec guaranteed values for maximum compatibility)"
+                "MSAA sample count {requested_samples} not supported by all texture formats {formats:?}, clamping to {clamped} (conservative approach - supported: {conservative_samples:?})"
             );
         }
 

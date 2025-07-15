@@ -82,11 +82,14 @@ fn test_application_with_valid_sample_count() {
 #[test]
 fn test_sample_count_validation_behavior() {
     // Test that the sample count validation logic works correctly
-    // This test doesn't require graphics drivers since it tests the logic directly
+    // Updated to reflect that sample count support depends on texture formats
 
-    // Test the validation logic function directly (using WebGPU spec guaranteed values)
-    fn validate_sample_count_test(requested_samples: u32) -> u32 {
-        let valid_samples = [1, 4];
+    // Test the validation logic function with format awareness
+    fn validate_sample_count_test_for_render_targets(requested_samples: u32) -> u32 {
+        // Simulate what happens in actual rendering with color + depth targets
+        // Color formats might support [1, 2, 4, 8, 16] but depth (Depth32Float)
+        // only guarantees [1, 4] per WebGPU spec, so we use the intersection
+        let valid_samples = [1, 4]; // Intersection for color + depth formats
         valid_samples
             .iter()
             .rev()
@@ -95,46 +98,46 @@ fn test_sample_count_validation_behavior() {
             .unwrap_or(1)
     }
 
-    // Test that invalid sample counts get clamped to valid ones
+    // Test that invalid sample counts get clamped to values supported by ALL formats
     assert_eq!(
-        validate_sample_count_test(2),
+        validate_sample_count_test_for_render_targets(2),
         1,
-        "Sample count 2 should clamp to 1"
+        "Sample count 2 should clamp to 1 due to depth format limitations"
     );
     assert_eq!(
-        validate_sample_count_test(3),
+        validate_sample_count_test_for_render_targets(3),
         1,
-        "Sample count 3 should clamp to 1"
+        "Sample count 3 should clamp to 1 due to depth format limitations"
     );
     assert_eq!(
-        validate_sample_count_test(5),
+        validate_sample_count_test_for_render_targets(5),
         4,
         "Sample count 5 should clamp to 4"
     );
     assert_eq!(
-        validate_sample_count_test(7),
+        validate_sample_count_test_for_render_targets(7),
         4,
         "Sample count 7 should clamp to 4"
     );
     assert_eq!(
-        validate_sample_count_test(8),
+        validate_sample_count_test_for_render_targets(8),
         4,
-        "Sample count 8 should clamp to 4"
+        "Sample count 8 should clamp to 4 due to depth format limitations"
     );
     assert_eq!(
-        validate_sample_count_test(16),
+        validate_sample_count_test_for_render_targets(16),
         4,
-        "Sample count 16 should clamp to 4"
+        "Sample count 16 should clamp to 4 due to depth format limitations"
     );
     assert_eq!(
-        validate_sample_count_test(0),
+        validate_sample_count_test_for_render_targets(0),
         1,
         "Sample count 0 should clamp to 1"
     );
 
     // Test that valid sample counts remain unchanged
-    assert_eq!(validate_sample_count_test(1), 1);
-    assert_eq!(validate_sample_count_test(4), 4);
+    assert_eq!(validate_sample_count_test_for_render_targets(1), 1);
+    assert_eq!(validate_sample_count_test_for_render_targets(4), 4);
 }
 
 #[test]

@@ -254,7 +254,11 @@ fn test_renderer_sample_count_validation() {
 
             if let Some(samples) = test_samples.into_iter().next() {
                 // Validate the sample count first, then create renderer
-                let validated_samples = graphics_api.validate_sample_count(samples);
+                let formats = &[
+                    wgpu::TextureFormat::Rgba8UnormSrgb, // Default headless surface format
+                    wgpu::TextureFormat::Depth32Float,   // Depth format
+                ];
+                let validated_samples = graphics_api.validate_sample_count(samples, formats);
 
                 // Create a new graphics API instance for each test since we consume it
                 let graphics_api_result = futures::executor::block_on(async {

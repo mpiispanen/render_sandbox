@@ -1,13 +1,33 @@
 /// Tests for graphics API functionality
 /// These tests focus on the graphics API abstraction and validation logic
 
+/// Tests for graphics API functionality
+/// These tests focus on the graphics API abstraction and validation logic
+
 #[test]
 fn test_sample_count_validation_logic() {
-    // Test the validation logic without requiring a full graphics API instance
-    // Using WebGPU spec guaranteed values for maximum compatibility
-    fn validate_sample_count_test(requested_samples: u32) -> u32 {
-        let valid_samples = [1, 4];
-        valid_samples
+    // Test the validation logic understanding that sample count support is format-dependent
+    // This test simulates the intersection logic for common texture formats
+    fn validate_sample_count_test_for_formats(requested_samples: u32, formats: &[&str]) -> u32 {
+        // Simulate format capabilities:
+        // Color formats typically support [1, 2, 4, 8, 16] on many devices
+        // Depth formats (Depth32Float) WebGPU spec guarantees [1, 4]
+
+        let mut supported_intersection = vec![1, 2, 4, 8, 16]; // Start with most permissive
+
+        for &format in formats {
+            let format_support = match format {
+                "Depth32Float" => vec![1, 4], // WebGPU spec guarantee for depth
+                "Rgba8UnormSrgb" | "Bgra8UnormSrgb" => vec![1, 2, 4, 8, 16], // Typical color format support
+                _ => vec![1, 4], // Conservative fallback
+            };
+
+            // Keep only samples supported by ALL formats (intersection)
+            supported_intersection.retain(|sample| format_support.contains(sample));
+        }
+
+        // Find best match that doesn't exceed requested
+        supported_intersection
             .iter()
             .rev()
             .find(|&&samples| samples <= requested_samples)
@@ -15,54 +35,23 @@ fn test_sample_count_validation_logic() {
             .unwrap_or(1)
     }
 
-    // Test valid sample counts (WebGPU spec guaranteed)
-    assert_eq!(validate_sample_count_test(1), 1);
-    assert_eq!(validate_sample_count_test(4), 4);
+    // Test with color formats only (more permissive)
+    let color_formats = &["Rgba8UnormSrgb"];
+    assert_eq!(validate_sample_count_test_for_formats(1, color_formats), 1);
+    assert_eq!(validate_sample_count_test_for_formats(2, color_formats), 2);
+    assert_eq!(validate_sample_count_test_for_formats(4, color_formats), 4);
+    assert_eq!(validate_sample_count_test_for_formats(8, color_formats), 8);
 
-    // Test invalid sample counts (should be clamped to nearest lower valid value)
-    assert_eq!(
-        validate_sample_count_test(2),
-        1,
-        "Sample count 2 should clamp to 1"
-    );
-    assert_eq!(
-        validate_sample_count_test(3),
-        1,
-        "Sample count 3 should clamp to 1"
-    );
-    assert_eq!(
-        validate_sample_count_test(5),
-        4,
-        "Sample count 5 should clamp to 4"
-    );
-    assert_eq!(
-        validate_sample_count_test(6),
-        4,
-        "Sample count 6 should clamp to 4"
-    );
-    assert_eq!(
-        validate_sample_count_test(7),
-        4,
-        "Sample count 7 should clamp to 4"
-    );
-    assert_eq!(
-        validate_sample_count_test(8),
-        4,
-        "Sample count 8 should clamp to 4"
-    );
-    assert_eq!(
-        validate_sample_count_test(16),
-        4,
-        "Sample count 16 should clamp to 4"
-    );
-    assert_eq!(
-        validate_sample_count_test(32),
-        4,
-        "Sample count 32 should clamp to 4"
-    );
+    // Test with color + depth formats (more restrictive due to depth limitations)
+    let mixed_formats = &["Rgba8UnormSrgb", "Depth32Float"];
+    assert_eq!(validate_sample_count_test_for_formats(1, mixed_formats), 1);
+    assert_eq!(validate_sample_count_test_for_formats(2, mixed_formats), 1); // Clamped due to depth
+    assert_eq!(validate_sample_count_test_for_formats(4, mixed_formats), 4);
+    assert_eq!(validate_sample_count_test_for_formats(8, mixed_formats), 4); // Clamped due to depth
 
-    // Test edge case
-    assert_eq!(validate_sample_count_test(0), 1);
+    // Test edge cases
+    assert_eq!(validate_sample_count_test_for_formats(0, mixed_formats), 1);
+    assert_eq!(validate_sample_count_test_for_formats(32, mixed_formats), 4);
 }
 
 #[test]
