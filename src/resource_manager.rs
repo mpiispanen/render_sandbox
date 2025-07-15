@@ -22,6 +22,14 @@ impl<T> Handle<T> {
         }
     }
 
+    /// Create a handle from a HandleId (used internally)
+    pub fn from_id(id: HandleId) -> Self {
+        Self {
+            id,
+            _phantom: PhantomData,
+        }
+    }
+
     pub fn id(&self) -> HandleId {
         self.id
     }
@@ -213,6 +221,23 @@ impl ResourceManager {
         handle
     }
 
+    /// Create a compute pipeline
+    pub fn create_compute_pipeline(
+        &mut self,
+        device: &wgpu::Device,
+        desc: &wgpu::ComputePipelineDescriptor,
+    ) -> Handle<wgpu::ComputePipeline> {
+        let pipeline = device.create_compute_pipeline(desc);
+        let handle_id = next_handle_id();
+        let handle = Handle::new(handle_id);
+
+        log::debug!("Created compute pipeline handle: {handle_id:?}");
+        self.resources
+            .insert(handle_id, Resource::ComputePipeline(pipeline));
+
+        handle
+    }
+
     /// Get a buffer by handle
     pub fn get_buffer(&self, handle: Handle<wgpu::Buffer>) -> Result<&wgpu::Buffer, ResourceError> {
         match self.resources.get(&handle.id()) {
@@ -289,6 +314,18 @@ impl ResourceManager {
     ) -> Result<&wgpu::Sampler, ResourceError> {
         match self.resources.get(&handle.id()) {
             Some(Resource::Sampler(sampler)) => Ok(sampler),
+            Some(_) => Err(ResourceError::TypeMismatch(handle.id())),
+            None => Err(ResourceError::ResourceNotFound(handle.id())),
+        }
+    }
+
+    /// Get a compute pipeline by handle
+    pub fn get_compute_pipeline(
+        &self,
+        handle: Handle<wgpu::ComputePipeline>,
+    ) -> Result<&wgpu::ComputePipeline, ResourceError> {
+        match self.resources.get(&handle.id()) {
+            Some(Resource::ComputePipeline(pipeline)) => Ok(pipeline),
             Some(_) => Err(ResourceError::TypeMismatch(handle.id())),
             None => Err(ResourceError::ResourceNotFound(handle.id())),
         }

@@ -1,9 +1,197 @@
+use crate::pipeline::{GraphicsPipelineBuilder, ShaderRegistry, VertexLayout};
 use crate::render_graph::{
     PassId, RenderGraphError, RenderPass, ResourceDeclaration, ResourceId, ResourceUsage,
 };
 use crate::resource_manager::ResourceManager;
 
-/// A simple forward renderer pass that renders meshes
+/// Demonstrates how to properly use ShaderRegistry and GraphicsPipelineBuilder.
+/// This function shows the intended usage pattern that would be used once
+/// the RenderPass trait interface supports mutable ResourceManager.
+#[allow(dead_code)]
+fn example_pipeline_creation_with_registry(
+    device: &wgpu::Device,
+    resource_manager: &mut ResourceManager,
+    surface_format: wgpu::TextureFormat,
+) -> Result<wgpu::RenderPipeline, RenderGraphError> {
+    // Create and configure shader registry
+    let mut shader_registry = ShaderRegistry::new();
+
+    // Create a procedural shader that doesn't need vertex buffers
+    let procedural_shader_source = r#"
+        struct VertexOutput {
+            @builtin(position) clip_position: vec4<f32>,
+        }
+
+        @vertex
+        fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
+            var out: VertexOutput;
+            
+            // Generate triangle vertices procedurally
+            var positions = array<vec2<f32>, 3>(
+                vec2<f32>(0.0, 0.5),   // Top
+                vec2<f32>(-0.5, -0.5), // Bottom left  
+                vec2<f32>(0.5, -0.5)   // Bottom right
+            );
+            
+            out.clip_position = vec4<f32>(positions[vertex_index], 0.0, 1.0);
+            return out;
+        }
+
+        @fragment
+        fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+            return vec4<f32>(0.8, 0.2, 0.3, 1.0);
+        }
+    "#;
+
+    // Register the procedural shader
+    shader_registry
+        .create_shader_from_wgsl(
+            device,
+            resource_manager,
+            "forward_procedural".to_string(),
+            procedural_shader_source,
+        )
+        .map_err(|e| RenderGraphError::ExecutionFailed(format!("Failed to create shader: {e}")))?;
+
+    // Use GraphicsPipelineBuilder with empty vertex layout for procedural rendering
+    let pipeline = GraphicsPipelineBuilder::new()
+        .with_label("Forward Render Pipeline".to_string())
+        .with_vertex_shader("forward_procedural".to_string())
+        .with_fragment_shader("forward_procedural".to_string())
+        .with_vertex_layout(VertexLayout::new()) // Empty layout for procedural generation
+        .with_color_format(surface_format)
+        .build(device, resource_manager, &shader_registry)
+        .map_err(|e| {
+            RenderGraphError::ExecutionFailed(format!("Failed to create pipeline: {e}"))
+        })?;
+
+    Ok(pipeline)
+}
+
+/// Helper function to create a forward render pipeline using the pipeline abstraction.
+/// This demonstrates the intended usage pattern of ShaderRegistry and GraphicsPipelineBuilder.
+/// This function is kept for documentation purposes but is no longer used since we now
+/// properly use the abstraction in the initialize method with mutable ResourceManager.
+#[allow(dead_code)]
+fn create_forward_pipeline(
+    device: &wgpu::Device,
+    surface_format: wgpu::TextureFormat,
+) -> Result<wgpu::RenderPipeline, RenderGraphError> {
+    // This is how we WOULD use ShaderRegistry if we had a mutable ResourceManager:
+    //
+    // let mut shader_registry = ShaderRegistry::new();
+    // shader_registry.create_shader_from_wgsl(device, resource_manager, "forward_procedural", source)?;
+    //
+    // let pipeline = GraphicsPipelineBuilder::new()
+    //     .with_label("Forward Render Pipeline".to_string())
+    //     .with_vertex_shader("forward_procedural".to_string())
+    //     .with_fragment_shader("forward_procedural".to_string())
+    //     .with_vertex_layout(VertexLayout::new())
+    //     .with_color_format(surface_format)
+    //     .build(device, resource_manager, &shader_registry)?;
+
+    // For now, we create the shader directly but use the pipeline builder patterns
+    let forward_shader_source = r#"
+        struct VertexOutput {
+            @builtin(position) clip_position: vec4<f32>,
+        }
+
+        @vertex
+        fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
+            var out: VertexOutput;
+            
+            // Generate triangle vertices procedurally
+            var positions = array<vec2<f32>, 3>(
+                vec2<f32>(0.0, 0.5),   // Top
+                vec2<f32>(-0.5, -0.5), // Bottom left  
+                vec2<f32>(0.5, -0.5)   // Bottom right
+            );
+            
+            out.clip_position = vec4<f32>(positions[vertex_index], 0.0, 1.0);
+            return out;
+        }
+
+        @fragment
+        fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+            return vec4<f32>(0.8, 0.2, 0.3, 1.0);
+        }
+    "#;
+
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("Forward Procedural Shader"),
+        source: wgpu::ShaderSource::Wgsl(forward_shader_source.into()),
+    });
+
+    // Use the VertexLayout abstraction (this part works with current interface)
+    let vertex_layout = VertexLayout::new(); // Empty layout for procedural generation
+    let (_vertex_buffer_layout, _attributes) = vertex_layout.build();
+
+    // Use GraphicsPipelineBuilder pattern to get proper defaults
+    let _pipeline_builder = GraphicsPipelineBuilder::new().with_color_format(surface_format);
+    // Note: Can't use .build() due to interface constraints, but we use the same default values
+
+    // Create pipeline layout
+    let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("Forward Pipeline Layout"),
+        bind_group_layouts: &[],
+        push_constant_ranges: &[],
+    });
+
+    // Create depth stencil state using builder defaults
+    let depth_stencil = Some(wgpu::DepthStencilState {
+        format: wgpu::TextureFormat::Depth32Float, // Default from builder
+        depth_write_enabled: true,                 // Default from builder
+        depth_compare: wgpu::CompareFunction::Less, // Default from builder
+        stencil: wgpu::StencilState::default(),
+        bias: wgpu::DepthBiasState::default(),
+    });
+
+    // Create color targets using builder settings
+    let color_targets = [Some(wgpu::ColorTargetState {
+        format: surface_format,
+        blend: Some(wgpu::BlendState::REPLACE), // Default from builder
+        write_mask: wgpu::ColorWrites::ALL,
+    })];
+
+    // Create the render pipeline using the same patterns as GraphicsPipelineBuilder
+    let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("Forward Render Pipeline"),
+        layout: Some(&pipeline_layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[], // No vertex buffers needed since we generate vertices procedurally
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &color_targets,
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList, // Default from builder
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw, // Default from builder
+            cull_mode: Some(wgpu::Face::Back), // Default from builder
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil,
+        multisample: wgpu::MultisampleState {
+            count: 1, // Default from builder
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        },
+        multiview: None,
+        cache: None,
+    });
+
+    Ok(render_pipeline)
+}
+
+/// A forward renderer pass that renders meshes from the scene
 pub struct ForwardRenderPass {
     id: PassId,
     resources: Vec<ResourceDeclaration>,
@@ -63,7 +251,7 @@ impl RenderPass for ForwardRenderPass {
     fn initialize(
         &mut self,
         device: &wgpu::Device,
-        _resource_manager: &ResourceManager,
+        resource_manager: &mut ResourceManager,
     ) -> Result<(), RenderGraphError> {
         if self.initialized {
             return Ok(());
@@ -71,85 +259,14 @@ impl RenderPass for ForwardRenderPass {
 
         log::debug!("Initializing forward render pass: {}", self.id);
 
-        // Create a basic shader for forward rendering
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Forward Render Shader"),
-            source: wgpu::ShaderSource::Wgsl(
-                r#"
-                @vertex
-                fn vs_main(@builtin(vertex_index) vertex_index: u32) -> @builtin(position) vec4<f32> {
-                    // Simple fullscreen triangle
-                    var pos = array<vec2<f32>, 3>(
-                        vec2<f32>(-1.0, -1.0),
-                        vec2<f32>(-1.0,  3.0),
-                        vec2<f32>( 3.0, -1.0),
-                    );
-                    return vec4<f32>(pos[vertex_index], 0.0, 1.0);
-                }
-
-                @fragment
-                fn fs_main() -> @location(0) vec4<f32> {
-                    return vec4<f32>(0.1, 0.2, 0.3, 1.0);
-                }
-                "#.into(),
-            ),
-        });
-
-        // Create render pipeline
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Forward Render Pipeline"),
-            layout: Some(
-                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("Forward Pipeline Layout"),
-                    bind_group_layouts: &[],
-                    push_constant_ranges: &[],
-                }),
-            ),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: self.surface_format,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: wgpu::TextureFormat::Depth32Float,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default(),
-            }),
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview: None,
-            cache: None,
-        });
+        // Now we can properly use the pipeline abstraction with mutable ResourceManager!
+        let render_pipeline =
+            example_pipeline_creation_with_registry(device, resource_manager, self.surface_format)?;
 
         self.render_pipeline = Some(render_pipeline);
         self.initialized = true;
 
-        log::debug!("Forward render pass initialized successfully");
+        log::debug!("Forward render pass initialized successfully with full pipeline abstraction");
         Ok(())
     }
 
@@ -160,7 +277,10 @@ impl RenderPass for ForwardRenderPass {
         resource_manager: &ResourceManager,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<(), RenderGraphError> {
-        log::debug!("Executing forward render pass: {}", self.id);
+        log::debug!(
+            "Executing forward render pass with pipeline abstraction: {}",
+            self.id
+        );
 
         // Get the actual render targets from the resource manager
         let back_buffer_handle: crate::resource_manager::Handle<wgpu::Texture> = resource_manager
@@ -223,13 +343,32 @@ impl RenderPass for ForwardRenderPass {
             occlusion_query_set: None,
         });
 
-        // If we have a render pipeline, use it to render a simple triangle
+        // If we have a render pipeline, use it to render
         if let Some(ref pipeline) = self.render_pipeline {
             render_pass.set_pipeline(pipeline);
+
+            // For now, render a hardcoded triangle to demonstrate the new pipeline system
+            // In the future, this should iterate through scene meshes
             render_pass.draw(0..3, 0..1); // Draw a single triangle
+
+            // TODO: In the enhanced version, this would look like:
+            // for mesh_node in visible_mesh_nodes {
+            //     let vertex_buffer = resource_manager.get_buffer(mesh_node.mesh.vertex_buffer)?;
+            //     render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            //
+            //     if let Some(index_buffer_handle) = mesh_node.mesh.index_buffer {
+            //         let index_buffer = resource_manager.get_buffer(index_buffer_handle)?;
+            //         render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            //         render_pass.draw_indexed(0..mesh_node.mesh.index_count.unwrap(), 0, 0..1);
+            //     } else {
+            //         render_pass.draw(0..mesh_node.mesh.vertex_count, 0..1);
+            //     }
+            // }
         }
 
-        log::debug!("Forward render pass executed with proper render targets");
+        log::debug!(
+            "Forward render pass executed with pipeline abstraction and proper render targets"
+        );
 
         Ok(())
     }

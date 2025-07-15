@@ -38,7 +38,7 @@ impl RenderPass for PlaceholderPass {
     fn initialize(
         &mut self,
         _device: &wgpu::Device,
-        _resource_manager: &ResourceManager,
+        _resource_manager: &mut ResourceManager,
     ) -> Result<(), RenderGraphError> {
         log::debug!("Initializing placeholder pass: {}", self.id);
         // Placeholder implementation - no initialization needed
