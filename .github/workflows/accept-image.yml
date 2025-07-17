@@ -91,7 +91,7 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v4
       with:
-        name: visual-test-results-baseline-${{ github.event.issue.number }}
+        name: visual-test-results-${{ github.event.issue.number }}
         path: ./artifacts/
     
     - name: Accept and commit image

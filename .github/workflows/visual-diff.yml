@@ -4,17 +4,6 @@ on:
   pull_request:
     types: [opened, synchronize]
   workflow_dispatch:
-    inputs:
-      test_scenario:
-        description: 'Test scenario to run'
-        required: false
-        default: 'all'
-        type: choice
-        options:
-          - all
-          - baseline
-          - changed
-          - mixed
 
 permissions:
   contents: write
@@ -26,9 +15,6 @@ jobs:
     runs-on: 
       - runson
       - gpu-4x-large
-    strategy:
-      matrix:
-        scenario: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.test_scenario == 'all' && fromJson('["baseline", "changed", "mixed"]') || github.event_name == 'workflow_dispatch' && fromJson(format('["{0}"]', github.event.inputs.test_scenario)) || fromJson('["baseline", "changed", "mixed"]') }}
     
     
     steps:
@@ -79,11 +65,6 @@ jobs:
     
     - name: Generate test outputs
       run: |
-        # Use the matrix scenario value
-        export TEST_SCENARIO="${{ matrix.scenario }}"
-        
-        echo "Running test scenario: $TEST_SCENARIO"
-        
         # Run the application's test suite to generate output images
         python scripts/generate_test_images.py
     
@@ -95,9 +76,9 @@ jobs:
         CHANGES_DETECTED=false
         
         # Create comparison report with summary table
-        echo "# Visual Regression Test Results - Scenario: ${{ matrix.scenario }}" > comparison_report.md
+        echo "# Visual Regression Test Results" > comparison_report.md
         echo "" >> comparison_report.md
-        echo "**Test Scenario:** \`${{ matrix.scenario }}\` - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> comparison_report.md
+        echo "**Test Date:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> comparison_report.md
         echo "" >> comparison_report.md
         echo "## Summary" >> comparison_report.md
         echo "" >> comparison_report.md
@@ -222,7 +203,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: visual-test-results-${{ matrix.scenario }}-${{ github.event.pull_request.number || github.run_number }}
+        name: visual-test-results-${{ github.event.pull_request.number || github.run_number }}
         path: |
           outputs/
           diffs/
@@ -247,8 +228,8 @@ jobs:
         git status
         echo "=============================================="
         
-        # Create a unique branch name for this PR, run, and scenario
-        BRANCH_NAME="visual-diff-pr-${{ github.event.pull_request.number || 'manual' }}-run-${{ github.run_id }}-${{ matrix.scenario }}"
+        # Create a unique branch name for this PR and run
+        BRANCH_NAME="visual-diff-pr-${{ github.event.pull_request.number || 'manual' }}-run-${{ github.run_id }}"
         echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
         
         # Store current branch/commit for restoration
@@ -368,7 +349,7 @@ jobs:
           git diff --cached --name-only
           echo "Committing changes..."
           
-          git commit -m "Temporary visual diff images for PR #${{ github.event.pull_request.number || github.run_number }} - Scenario: ${{ matrix.scenario }}"
+          git commit -m "Temporary visual diff images for PR #${{ github.event.pull_request.number || github.run_number }}"
           
           echo "Commit successful, pushing to origin with retry logic..."
           # Push the branch with retry logic for race conditions
@@ -550,9 +531,7 @@ jobs:
           
           const botComments = comments.data.filter(comment => 
             comment.user.type === 'Bot' && 
-            (comment.body.includes('Visual Regression Test Results - Scenario: ${{ matrix.scenario }}') ||
-             (comment.body.includes('Visual Regression Test Results') && 
-              comment.body.includes('Scenario: ${{ matrix.scenario }}')))
+            comment.body.includes('Visual Regression Test Results')
           );
           
           // Delete old bot comments to avoid confusion
@@ -582,9 +561,9 @@ jobs:
       uses: actions/github-script@v7
       with:
         script: |
-          const report = "✅ **Visual tests passed for scenario \`${{ matrix.scenario }}\`!** No differences detected.\n\n**Test Scenario:** \`${{ matrix.scenario }}\` - " + new Date().toISOString().replace('T', ' ').substr(0, 19) + " UTC";
+          const report = "✅ **Visual tests passed!** No differences detected.\n\n**Test Date:** " + new Date().toISOString().replace('T', ' ').substr(0, 19) + " UTC";
           
-          // Clean up old bot comments for this scenario first
+          // Clean up old bot comments first
           const comments = await github.rest.issues.listComments({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -593,10 +572,7 @@ jobs:
           
           const botComments = comments.data.filter(comment => 
             comment.user.type === 'Bot' && 
-            (comment.body.includes('Visual Regression Test Results - Scenario: ${{ matrix.scenario }}') ||
-             comment.body.includes('Visual tests passed for scenario `${{ matrix.scenario }}`') ||
-             (comment.body.includes('Visual Regression Test Results') && 
-              comment.body.includes('Scenario: ${{ matrix.scenario }}')))
+            comment.body.includes('Visual tests passed')
           );
           
           // Delete old bot comments to avoid confusion
