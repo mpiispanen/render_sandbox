@@ -2,8 +2,7 @@
 """
 Test script that generates visual regression test images using render_sandbox.
 This script creates various rendering scenarios to test visual output consistency.
-If render_sandbox fails (e.g., in CI without GPU), it falls back to generating
-synthetic test images to demonstrate the visual regression testing workflow.
+Requires a real GPU - CI will fail if render_sandbox cannot run properly.
 """
 
 import os
@@ -11,80 +10,6 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
-import random
-
-def create_fallback_image(output_path, width, height, test_name, description):
-    """
-    Create a synthetic test image when render_sandbox cannot run.
-    This is used in CI environments without GPU access.
-    """
-    # Create image with background color based on test name
-    bg_colors = {
-        'basic_render_800x600': (240, 248, 255),  # Alice blue
-        'high_res_1920x1080': (255, 240, 245),   # Lavender blush
-        'square_512x512': (240, 255, 240),       # Honeydew
-        'antialiased_4x': (255, 255, 240),       # Ivory
-        'minimal_400x300': (248, 248, 255),      # Ghost white
-    }
-    
-    bg_color = bg_colors.get(test_name, (255, 255, 255))
-    image = Image.new('RGB', (width, height), bg_color)
-    draw = ImageDraw.Draw(image)
-    
-    # Draw border
-    border_color = (100, 100, 100)
-    draw.rectangle([0, 0, width-1, height-1], outline=border_color, width=2)
-    
-    # Draw test identifier
-    draw.rectangle([10, 10, width-10, 60], fill=(50, 50, 50), outline=border_color)
-    
-    # Add text
-    try:
-        font = ImageFont.load_default()
-    except:
-        font = None
-    
-    # Title
-    title_text = test_name.replace('_', ' ').title()
-    draw.text((20, 20), title_text, fill=(255, 255, 255), font=font)
-    draw.text((20, 35), f"{width}x{height}", fill=(200, 200, 200), font=font)
-    
-    # Description
-    desc_y = 80
-    for line in description.split():
-        draw.text((20, desc_y), line, fill=(80, 80, 80), font=font)
-        desc_y += 15
-    
-    # Add some geometric shapes for visual interest
-    center_x, center_y = width // 2, height // 2
-    
-    # Circle
-    circle_radius = min(width, height) // 8
-    draw.ellipse([
-        center_x - circle_radius, center_y - circle_radius,
-        center_x + circle_radius, center_y + circle_radius
-    ], outline=(200, 100, 100), width=3)
-    
-    # Rectangle
-    rect_size = min(width, height) // 12
-    draw.rectangle([
-        center_x - rect_size, center_y - rect_size,
-        center_x + rect_size, center_y + rect_size
-    ], fill=(100, 200, 100))
-    
-    # Add some random dots for uniqueness
-    random.seed(hash(test_name))  # Deterministic based on test name
-    for _ in range(20):
-        x = random.randint(0, width)
-        y = random.randint(0, height)
-        size = random.randint(2, 8)
-        color = (random.randint(100, 200), random.randint(100, 200), random.randint(100, 200))
-        draw.ellipse([x-size//2, y-size//2, x+size//2, y+size//2], fill=color)
-    
-    # Save the image
-    image.save(output_path)
-    print(f"Created fallback image: {output_path}")
 
 def run_render_sandbox(output_path, width=800, height=600, format="png", **kwargs):
     """
@@ -200,49 +125,31 @@ def main():
             render_params = {k: v for k, v in test_case.items() 
                            if k not in ['name', 'description']}
             
-            try:
-                run_render_sandbox(
-                    output_path,
-                    **render_params
-                )
-                
-                # Verify the output file was created
-                if os.path.exists(output_path):
-                    file_size = os.path.getsize(output_path)
-                    print(f"✅ Created {output_path} ({file_size} bytes)")
-                    success_count += 1
-                else:
-                    print(f"❌ Failed to create {output_path}")
-                    
-            except Exception as render_error:
-                print(f"⚠️  render_sandbox failed for {test_case['name']}: {render_error}")
-                print("Falling back to synthetic image generation...")
-                
-                # Create fallback synthetic image
-                create_fallback_image(
-                    output_path,
-                    test_case['width'],
-                    test_case['height'],
-                    test_case['name'],
-                    test_case['description']
-                )
-                
-                if os.path.exists(output_path):
-                    file_size = os.path.getsize(output_path)
-                    print(f"✅ Created fallback {output_path} ({file_size} bytes)")
-                    success_count += 1
-                else:
-                    print(f"❌ Failed to create fallback {output_path}")
+            run_render_sandbox(
+                output_path,
+                **render_params
+            )
+            
+            # Verify the output file was created
+            if os.path.exists(output_path):
+                file_size = os.path.getsize(output_path)
+                print(f"✅ Created {output_path} ({file_size} bytes)")
+                success_count += 1
+            else:
+                print(f"❌ Failed to create {output_path}")
                 
         except Exception as e:
             print(f"❌ Error generating {test_case['name']}: {e}")
+            # Don't continue with synthetic fallback - fail the test
+            sys.exit(1)
     
     print("\n" + "=" * 50)
     print(f"Test image generation completed!")
     print(f"Success: {success_count}/{total_count} images generated")
     
     if success_count < total_count:
-        print(f"Warning: {total_count - success_count} images failed to generate")
+        print(f"Error: {total_count - success_count} images failed to generate")
+        print("Visual regression testing requires GPU access - CI should fail without real GPU")
         sys.exit(1)
     
     print("\nGenerated test images:")

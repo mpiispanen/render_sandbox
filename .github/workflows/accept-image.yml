@@ -91,13 +91,19 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v4
       with:
-        name: visual-test-results-${{ github.event.issue.number }}
+        name: visual-test-results-baseline-${{ github.event.issue.number }}
         path: ./artifacts/
     
     - name: Accept and commit image
       run: |
         IMAGE_NAME="${{ steps.parse.outputs.image_name }}"
         COMMENTER="${{ steps.parse.outputs.commenter }}"
+        
+        echo "=== Accepting image: $IMAGE_NAME ==="
+        echo "Current branch: $(git branch --show-current)"
+        echo "This will commit to the PR branch: ${{ steps.pr.outputs.head_ref }}"
+        echo "NOT to any temporary display branches"
+        echo "=============================================="
         
         # Ensure golden directory exists
         mkdir -p golden
@@ -111,8 +117,13 @@ jobs:
         # Move the image to golden directory
         cp "artifacts/outputs/$IMAGE_NAME" "golden/$IMAGE_NAME"
         
-        # Add and commit the change
+        # Clean up temporary artifacts from the repository (if they exist)
+        rm -f "outputs/$IMAGE_NAME" 2>/dev/null || true
+        rm -f "diffs/diff_$(basename "$IMAGE_NAME" .png).png" 2>/dev/null || true
+        
+        # Add and commit the changes
         git add "golden/$IMAGE_NAME"
+        git add -u outputs/ diffs/ 2>/dev/null || true  # Remove deleted files
         
         # Check if there are changes to commit
         if git diff --staged --quiet; then
@@ -123,10 +134,11 @@ jobs:
           Accepted by: $COMMENTER
           Source: PR #${{ github.event.issue.number }}"
           
-          # Push the changes
+          # Push the changes to the PR branch (NOT to temporary display branches)
+          echo "Pushing to PR branch: ${{ steps.pr.outputs.head_ref }}"
           git push origin ${{ steps.pr.outputs.head_ref }}
           
-          echo "Successfully committed and pushed $IMAGE_NAME to golden directory"
+          echo "Successfully committed and pushed $IMAGE_NAME to golden directory on PR branch"
         fi
     
     - name: Comment on success

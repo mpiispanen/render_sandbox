@@ -12,6 +12,20 @@ This is a Rust based repository using wgpu for graphics rendering, but the rende
 - Test: `cargo test`
 - Make sure CI tests pass and fix errors before committing if they do not
 
+## CI Infrastructure
+
+### GPU Testing Requirements
+- All tests that require GPU access should run on RunOn AWS GPU instances using the best value GPU node
+- Use RunOn label format: `runs-on: [runson, gpu-4x-large]` for GPU-dependent workflows
+- Non-GPU tests (builds, linting, unit tests) should run on regular GitHub Actions runners: `runs-on: ubuntu-latest`
+- Visual regression tests MUST run on GPU instances and should fail if GPU access is unavailable
+- Do not implement synthetic/fallback image generation for GPU tests - real GPU rendering is required
+
+### RunOn Configuration Guidelines
+- GPU Instance Selection: Use `gpu-4x-large` for the best value when running visual regression tests
+- Non-GPU workflows should continue using standard GitHub Actions runners
+- Ensure proper resource allocation by separating GPU-dependent from CPU-only workflows
+
 ## Key Guidelines
 1. Follow Rust best practices and idiomatic patterns
 2. Maintain existing code structure and organization
