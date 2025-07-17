@@ -38,3 +38,11 @@ diffs/**/*.png
 diffs/**/*.jpg
 diffs/**/*.jpeg
 diffs/**/*.bmp
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+scripts/__pycache__/
