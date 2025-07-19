@@ -22,5 +22,27 @@ target
 
 
 # Added by cargo
-
 /target
+
+# Visual regression testing temporary directories
+outputs/
+diffs/
+
+# Exclude output images from version control (temporary test images)
+# Golden images are tracked via LFS in .gitattributes
+outputs/**/*.png
+outputs/**/*.jpg
+outputs/**/*.jpeg
+outputs/**/*.bmp
+diffs/**/*.png
+diffs/**/*.jpg
+diffs/**/*.jpeg
+diffs/**/*.bmp
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+scripts/__pycache__/
