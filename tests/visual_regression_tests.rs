@@ -1,6 +1,6 @@
+use std::fs;
 use std::path::Path;
 use std::process::Command;
-use std::fs;
 
 /// Test cases for visual regression testing
 /// These tests generate images that are compared against golden masters
@@ -59,10 +59,13 @@ fn ensure_binary_exists() -> Result<(), Box<dyn std::error::Error>> {
         let output = Command::new("cargo")
             .args(["build", "--release"])
             .output()?;
-            
+
         if !output.status.success() {
-            return Err(format!("Failed to build render_sandbox: {}", 
-                              String::from_utf8_lossy(&output.stderr)).into());
+            return Err(format!(
+                "Failed to build render_sandbox: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )
+            .into());
         }
         println!("Successfully built render_sandbox");
     }
@@ -72,37 +75,47 @@ fn ensure_binary_exists() -> Result<(), Box<dyn std::error::Error>> {
 /// Generate a test image using the render_sandbox binary
 fn generate_test_image(test_case: &TestCase) -> Result<(), Box<dyn std::error::Error>> {
     let output_path = format!("outputs/{}.png", test_case.name);
-    
+
     let mut cmd = Command::new("./target/release/render_sandbox");
-    cmd.arg("--output").arg(&output_path)
-       .arg("--width").arg(test_case.width.to_string())
-       .arg("--height").arg(test_case.height.to_string())
-       .arg("--format").arg("png")
-       .arg("--samples").arg(test_case.samples.to_string())
-       .arg("--headless"); // Run in headless mode for CI
-    
-    println!("Running command: {:?}", cmd);
-    
+    cmd.arg("--output")
+        .arg(&output_path)
+        .arg("--width")
+        .arg(test_case.width.to_string())
+        .arg("--height")
+        .arg(test_case.height.to_string())
+        .arg("--format")
+        .arg("png")
+        .arg("--samples")
+        .arg(test_case.samples.to_string())
+        .arg("--headless"); // Run in headless mode for CI
+
+    println!("Running command: {cmd:?}");
+
     let output = cmd.output()?;
-    
+
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
-        return Err(format!("render_sandbox failed:\nstdout: {}\nstderr: {}", stdout, stderr).into());
+        return Err(format!("render_sandbox failed:\nstdout: {stdout}\nstderr: {stderr}").into());
     }
-    
+
     // Verify the output file was created
     let path = Path::new(&output_path);
     if !path.exists() {
-        return Err(format!("Output image was not created: {}", output_path).into());
+        return Err(format!("Output image was not created: {output_path}").into());
     }
-    
+
     let file_size = fs::metadata(path)?.len();
     if file_size < 1000 {
-        return Err(format!("Output image is too small ({} bytes), likely invalid", file_size).into());
+        return Err(
+            format!("Output image is too small ({file_size} bytes), likely invalid").into(),
+        );
     }
-    
-    println!("✅ Generated {} ({} bytes) - {}", output_path, file_size, test_case.description);
+
+    println!(
+        "✅ Generated {} ({} bytes) - {}",
+        output_path, file_size, test_case.description
+    );
     Ok(())
 }
 
@@ -113,22 +126,22 @@ fn generate_test_image(test_case: &TestCase) -> Result<(), Box<dyn std::error::E
 fn generate_visual_regression_images() {
     // Ensure outputs directory exists
     fs::create_dir_all("outputs").expect("Failed to create outputs directory");
-    
+
     // Ensure binary exists
     if let Err(e) = ensure_binary_exists() {
-        panic!("Failed to ensure binary exists: {}", e);
+        panic!("Failed to ensure binary exists: {e}");
     }
-    
+
     println!("Generating visual regression test images...");
     println!("{}", "=".repeat(60));
-    
+
     let mut success_count = 0;
     let total_count = TEST_CASES.len();
-    
+
     for test_case in TEST_CASES {
         println!("\nGenerating: {}", test_case.name);
         println!("Description: {}", test_case.description);
-        
+
         match generate_test_image(test_case) {
             Ok(()) => {
                 success_count += 1;
@@ -136,32 +149,38 @@ fn generate_visual_regression_images() {
             Err(e) => {
                 println!("❌ Failed to generate {}: {}", test_case.name, e);
                 // For visual regression testing, we require GPU access - fail the test if we can't generate images
-                panic!("Visual regression test failed for {}: {}", test_case.name, e);
+                panic!(
+                    "Visual regression test failed for {}: {}",
+                    test_case.name, e
+                );
             }
         }
     }
-    
+
     println!("\n{}", "=".repeat(60));
     println!("Visual regression image generation completed!");
-    println!("Success: {}/{} images processed", success_count, total_count);
-    
+    println!("Success: {success_count}/{total_count} images processed");
+
     if success_count < total_count {
-        panic!("Failed to generate {} out of {} visual regression test images", 
-               total_count - success_count, total_count);
+        panic!(
+            "Failed to generate {} out of {} visual regression test images",
+            total_count - success_count,
+            total_count
+        );
     }
-    
+
     // List generated images
     if let Ok(entries) = fs::read_dir("outputs") {
         println!("\nGenerated test images:");
-        for entry in entries {
-            if let Ok(entry) = entry {
-                if let Some(extension) = entry.path().extension() {
-                    if extension == "png" {
-                        if let Ok(metadata) = entry.metadata() {
-                            println!("  - {} ({} bytes)", 
-                                   entry.file_name().to_string_lossy(), 
-                                   metadata.len());
-                        }
+        for entry in entries.flatten() {
+            if let Some(extension) = entry.path().extension() {
+                if extension == "png" {
+                    if let Ok(metadata) = entry.metadata() {
+                        println!(
+                            "  - {} ({} bytes)",
+                            entry.file_name().to_string_lossy(),
+                            metadata.len()
+                        );
                     }
                 }
             }
@@ -172,7 +191,7 @@ fn generate_visual_regression_images() {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-    
+
     #[test]
     fn test_case_definitions() {
         // Ensure all test cases have valid configurations
@@ -181,21 +200,33 @@ mod unit_tests {
             assert!(test_case.width > 0, "Width must be positive");
             assert!(test_case.height > 0, "Height must be positive");
             assert!(test_case.samples > 0, "Samples must be positive");
-            assert!(!test_case.description.is_empty(), "Description cannot be empty");
-            
+            assert!(
+                !test_case.description.is_empty(),
+                "Description cannot be empty"
+            );
+
             // Ensure name is suitable for filename
-            assert!(!test_case.name.contains(' '), "Test case name should not contain spaces");
-            assert!(!test_case.name.contains('/'), "Test case name should not contain slashes");
+            assert!(
+                !test_case.name.contains(' '),
+                "Test case name should not contain spaces"
+            );
+            assert!(
+                !test_case.name.contains('/'),
+                "Test case name should not contain slashes"
+            );
         }
     }
-    
+
     #[test]
     fn test_case_uniqueness() {
         // Ensure all test case names are unique
         let mut names = std::collections::HashSet::new();
         for test_case in TEST_CASES {
-            assert!(names.insert(test_case.name), 
-                   "Duplicate test case name: {}", test_case.name);
+            assert!(
+                names.insert(test_case.name),
+                "Duplicate test case name: {}",
+                test_case.name
+            );
         }
     }
 }

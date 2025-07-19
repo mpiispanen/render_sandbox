@@ -21,6 +21,12 @@ This is a Rust based repository using wgpu for graphics rendering, but the rende
 - Visual regression tests MUST run on GPU instances and should fail if GPU access is unavailable
 - Do not implement synthetic/fallback image generation for GPU tests - real GPU rendering is required
 
+### Visual Regression Testing
+- Visual regression tests generate images using `cargo test` (specifically the `generate_visual_regression_images` test)
+- The CI workflow accepts these pre-generated images and performs comparison against golden masters
+- Tests call the render_sandbox binary with appropriate parameters to generate test images
+- This follows the upstream pattern where external applications generate images and CI performs comparison
+
 ### RunOn Configuration Guidelines
 - GPU Instance Selection: Use `gpu-4x-large` for the best value when running visual regression tests
 - Non-GPU workflows should continue using standard GitHub Actions runners
