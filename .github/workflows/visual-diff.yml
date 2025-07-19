@@ -25,12 +25,6 @@ jobs:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Install NVIDIA FLIP for image comparison
-      run: |
-        # Install NVIDIA FLIP from PyPI for high-fidelity image comparison
-        pip install flip-evaluator
-        flip --help
-    
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
     
@@ -43,15 +37,17 @@ jobs:
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     
-    - name: Setup Python for test execution
+    - name: Setup Python and install FLIP
       uses: actions/setup-python@v4
       with:
         python-version: '3.x'
     
-    - name: Install Python dependencies
+    - name: Install NVIDIA FLIP for image comparison
       run: |
         python -m pip install --upgrade pip
-        pip install Pillow numpy
+        # Install NVIDIA FLIP from PyPI for high-fidelity image comparison
+        pip install flip-evaluator
+        flip --help
     
     - name: Create necessary directories
       run: |
@@ -63,10 +59,10 @@ jobs:
       run: |
         cargo build --release
     
-    - name: Generate test outputs
+    - name: Generate test outputs via cargo test
       run: |
-        # Run the application's test suite to generate output images
-        python scripts/generate_test_images.py
+        # Run visual regression tests which generate output images using the application
+        cargo test generate_visual_regression_images --release -- --exact --nocapture
     
     - name: Compare images and generate diffs
       id: compare
