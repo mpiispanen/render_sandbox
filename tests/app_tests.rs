@@ -1,9 +1,20 @@
-use render_sandbox::{app_core::Application, engine::EngineError};
+use render_sandbox::{app_core::Application, engine::EngineError, Args};
 
 #[test]
 fn test_application_headless_mode() {
     // Test that we can create an application in headless mode
-    let app = Application::new(true, "test_assets/triangle.gltf".to_string());
+    let args = Args {
+        width: 800,
+        height: 600,
+        output: "test_output.png".to_string(),
+        format: "png".to_string(),
+        samples: 1,
+        verbose: false,
+        log_level: "info".to_string(),
+        headless: true,
+        gltf_path: "test_assets/triangle.gltf".to_string(),
+    };
+    let app = Application::new(args);
     assert!(app.is_ok(), "Failed to create headless application");
 }
 
@@ -15,7 +26,18 @@ fn test_application_windowed_mode() {
 
     // Use panic::catch_unwind to handle the expected threading panic in test environments
     let result = std::panic::catch_unwind(|| {
-        Application::new(false, "test_assets/triangle.gltf".to_string())
+        let args = Args {
+            width: 800,
+            height: 600,
+            output: "test_output.png".to_string(),
+            format: "png".to_string(),
+            samples: 1,
+            verbose: false,
+            log_level: "info".to_string(),
+            headless: false,
+            gltf_path: "test_assets/triangle.gltf".to_string(),
+        };
+        Application::new(args)
     });
 
     match result {
@@ -70,7 +92,18 @@ fn test_application_windowed_mode() {
 #[test]
 fn test_headless_run() {
     // Test running the application in headless mode
-    if let Ok(app) = Application::new(true, "test_assets/triangle.gltf".to_string()) {
+    let args = Args {
+        width: 800,
+        height: 600,
+        output: "test_output.png".to_string(),
+        format: "png".to_string(),
+        samples: 1,
+        verbose: false,
+        log_level: "info".to_string(),
+        headless: true,
+        gltf_path: "test_assets/triangle.gltf".to_string(),
+    };
+    if let Ok(app) = Application::new(args) {
         let result = app.run();
 
         // In CI environments without graphics drivers, this is expected to fail
