@@ -21,6 +21,14 @@ This is a Rust based repository using wgpu for graphics rendering, but the rende
 - Visual regression tests MUST run on GPU instances and should fail if GPU access is unavailable
 - Do not implement synthetic/fallback image generation for GPU tests - real GPU rendering is required
 
+### Test Organization
+- **GPU-requiring tests**: Use `#[cfg(feature = "gpu-tests")]` attribute and run with `--features gpu-tests`
+- **Standard CI tests**: Run without the `gpu-tests` feature on `ubuntu-latest` runners
+- **GPU tests include**: Visual regression tests, rendering tests, GPU-dependent integration tests
+- **Standard tests include**: Unit tests, CLI parsing, architecture tests, build validation
+- The visual-diff workflow runs GPU tests on RunOn instances with the `gpu-tests` feature enabled
+- The standard CI workflow runs non-GPU tests on GitHub Actions standard runners
+
 ### Visual Regression Testing
 - Visual regression tests generate images using `cargo test` (specifically the `generate_visual_regression_images` test)
 - The CI workflow accepts these pre-generated images and performs comparison against golden masters

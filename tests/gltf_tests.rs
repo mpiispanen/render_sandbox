@@ -47,6 +47,7 @@ fn test_gltf_error_from_io() {
 
 /// Test creating a GLTF test triangle using our loader
 #[test]
+#[cfg(feature = "gpu-tests")]
 fn test_gltf_test_triangle_creation() {
     // Try to create GPU context, skip if not available
     let mut gpu_context = match futures::executor::block_on(TestGpuContext::new()) {
@@ -78,6 +79,7 @@ fn test_gltf_test_triangle_creation() {
 
 /// Test loading GLTF files using our loader and scene
 #[test]
+#[cfg(feature = "gpu-tests")]
 fn test_gltf_sample_models_with_our_loader() {
     // Try to create GPU context, skip if not available
     let mut gpu_context = match futures::executor::block_on(TestGpuContext::new()) {
@@ -157,6 +159,7 @@ fn test_gltf_sample_models_with_our_loader() {
 
 /// Test scene hierarchy validation after GLTF loading
 #[test]
+#[cfg(feature = "gpu-tests")]
 fn test_gltf_scene_hierarchy() {
     // Try to create GPU context, skip if not available
     let mut gpu_context = match futures::executor::block_on(TestGpuContext::new()) {
@@ -214,6 +217,7 @@ fn test_gltf_scene_hierarchy() {
 
 /// Test scene complexity comparison
 #[test]
+#[cfg(feature = "gpu-tests")]
 fn test_gltf_scene_complexity() {
     // Try to create GPU context, skip if not available
     let mut gpu_context = match futures::executor::block_on(TestGpuContext::new()) {
@@ -259,6 +263,7 @@ fn test_gltf_scene_complexity() {
 
 /// Test that scene properly handles GLTF features
 #[test]
+#[cfg(feature = "gpu-tests")]
 fn test_gltf_feature_support() {
     // Try to create GPU context, skip if not available
     let mut gpu_context = match futures::executor::block_on(TestGpuContext::new()) {

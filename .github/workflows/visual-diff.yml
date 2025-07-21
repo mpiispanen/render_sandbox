@@ -62,7 +62,8 @@ jobs:
     - name: Generate test outputs via cargo test
       run: |
         # Run visual regression tests which generate output images using the application
-        cargo test generate_visual_regression_images --release -- --exact --nocapture
+        # Enable gpu-tests feature to run GPU-requiring tests on this GPU instance
+        cargo test generate_visual_regression_images --release --features gpu-tests -- --exact --nocapture
     
     - name: Compare images and generate diffs
       id: compare
