@@ -12,9 +12,7 @@ permissions:
 
 jobs:
   visual-diff:
-    runs-on: 
-      - runson
-      - gpu-4x-large
+    runs-on: runs-on=${{ github.run_id }}/runner=gpu-4x-large
     
     steps:
     - name: Checkout code
