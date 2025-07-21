@@ -1,10 +1,15 @@
 mod test_helpers;
 
+use render_sandbox::gltf_loader::GltfError;
+
+#[cfg(feature = "gpu-tests")]
 use render_sandbox::{
-    gltf_loader::{GltfError, GltfLoader},
+    gltf_loader::GltfLoader,
     scene::{NodeContent, Scene},
 };
+#[cfg(feature = "gpu-tests")]
 use std::path::Path;
+#[cfg(feature = "gpu-tests")]
 use test_helpers::TestGpuContext;
 
 /// Test GLTF loader error types

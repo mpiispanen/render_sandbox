@@ -52,6 +52,7 @@ const TEST_CASES: &[TestCase] = &[
 ];
 
 /// Ensure the render_sandbox binary exists
+#[allow(dead_code)]
 fn ensure_binary_exists() -> Result<(), Box<dyn std::error::Error>> {
     let binary_path = Path::new("./target/release/render_sandbox");
     if !binary_path.exists() {
@@ -73,6 +74,7 @@ fn ensure_binary_exists() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Generate a test image using the render_sandbox binary
+#[allow(dead_code)]
 fn generate_test_image(test_case: &TestCase) -> Result<(), Box<dyn std::error::Error>> {
     let output_path = format!("outputs/{}.png", test_case.name);
 

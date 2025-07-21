@@ -1,3 +1,4 @@
+#[cfg(feature = "gpu-tests")]
 use render_sandbox::{
     graphics_api::{GraphicsApi, WgpuGraphicsApi},
     renderer::Renderer,
