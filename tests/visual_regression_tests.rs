@@ -122,7 +122,7 @@ fn generate_test_image(test_case: &TestCase) -> Result<(), Box<dyn std::error::E
 /// Generate all visual regression test images
 /// This test runs during `cargo test` and generates the images that will be compared
 /// against golden masters by the CI image comparison workflow
-/// 
+///
 /// This test requires GPU access and should only run on GPU-enabled runners
 #[test]
 #[cfg(feature = "gpu-tests")]

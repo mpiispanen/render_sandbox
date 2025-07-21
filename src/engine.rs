@@ -59,7 +59,12 @@ pub struct PlaceholderEngine {
 }
 
 impl Engine for PlaceholderEngine {
-    async fn new(_window_handle: Option<&Window>, _gltf_path: &str, _width: u32, _height: u32) -> Result<Self, EngineError> {
+    async fn new(
+        _window_handle: Option<&Window>,
+        _gltf_path: &str,
+        _width: u32,
+        _height: u32,
+    ) -> Result<Self, EngineError> {
         log::info!(
             "Creating placeholder engine (headless: {})",
             _window_handle.is_none()
@@ -122,7 +127,9 @@ impl RealTimeEngine {
     ) -> Result<Self, EngineError> {
         log::info!(
             "Creating real-time engine (headless: {}, {}x{})",
-            window_handle.is_none(), width, height
+            window_handle.is_none(),
+            width,
+            height
         );
 
         // Initialize graphics API
@@ -189,7 +196,12 @@ impl RealTimeEngine {
 }
 
 impl Engine for RealTimeEngine {
-    async fn new(window_handle: Option<&Window>, gltf_path: &str, width: u32, height: u32) -> Result<Self, EngineError> {
+    async fn new(
+        window_handle: Option<&Window>,
+        gltf_path: &str,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, EngineError> {
         Self::new_impl(window_handle, gltf_path, width, height).await
     }
 
@@ -237,7 +249,7 @@ impl Engine for RealTimeEngine {
             // Return properly sized frame data based on actual resolution
             let pixel_count = (self.width * self.height) as usize;
             let mut data = Vec::with_capacity(pixel_count * 4);
-            
+
             // Generate a simple test pattern (colored triangle-like pattern)
             for y in 0..self.height {
                 for x in 0..self.width {
@@ -248,7 +260,7 @@ impl Engine for RealTimeEngine {
                     data.extend_from_slice(&[r, g, b, a]);
                 }
             }
-            
+
             Some(data)
         } else {
             None
