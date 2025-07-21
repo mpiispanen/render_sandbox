@@ -257,7 +257,7 @@ impl Application {
 
         // Save the image
         img.save_with_format(&self.args.output, format)
-            .map_err(|e| EngineError::RenderingError(format!("Failed to save image: {}", e)))?;
+            .map_err(|e| EngineError::RenderingError(format!("Failed to save image: {e}")))?;
 
         info!("Successfully saved image: {}", self.args.output);
         Ok(())
