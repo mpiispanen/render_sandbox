@@ -15,8 +15,8 @@ This is a Rust based repository using wgpu for graphics rendering, but the rende
 ## CI Infrastructure
 
 ### GPU Testing Requirements
-- All tests that require GPU access should run on RunOn AWS GPU instances using the best value GPU node
-- Use RunOn configuration format: `runs-on: runs-on=${{ github.run_id }}/runner=gpu-4x-large` for GPU-dependent workflows
+- All tests that require GPU access should run on self-hosted GPU instances using our x64 Linux node
+- Use self-hosted runner configuration: `runs-on: [self-hosted, linux, x64]` for GPU-dependent workflows
 - Non-GPU tests (builds, linting, unit tests) should run on regular GitHub Actions runners: `runs-on: ubuntu-latest`
 - Visual regression tests MUST run on GPU instances and should fail if GPU access is unavailable
 - Do not implement synthetic/fallback image generation for GPU tests - real GPU rendering is required
@@ -26,7 +26,7 @@ This is a Rust based repository using wgpu for graphics rendering, but the rende
 - **Standard CI tests**: Run without the `gpu-tests` feature on `ubuntu-latest` runners
 - **GPU tests include**: Visual regression tests, rendering tests, GPU-dependent integration tests
 - **Standard tests include**: Unit tests, CLI parsing, architecture tests, build validation
-- The visual-diff workflow runs GPU tests on RunOn instances with the `gpu-tests` feature enabled
+- The visual-diff workflow runs GPU tests on self-hosted instances with the `gpu-tests` feature enabled
 - The standard CI workflow runs non-GPU tests on GitHub Actions standard runners
 
 ### Visual Regression Testing
@@ -35,11 +35,11 @@ This is a Rust based repository using wgpu for graphics rendering, but the rende
 - Tests call the render_sandbox binary with appropriate parameters to generate test images
 - This follows the upstream pattern where external applications generate images and CI performs comparison
 
-### RunOn Configuration Guidelines
-- GPU Instance Selection: Use the correct RunOn format `runs-on: runs-on=${{ github.run_id }}/runner=gpu-4x-large` for the best value GPU node when running visual regression tests
+### Self-Hosted Runner Configuration Guidelines
+- GPU Instance Selection: Use self-hosted runner format `runs-on: [self-hosted, linux, x64]` for GPU-dependent workflows running visual regression tests
 - Non-GPU workflows should continue using standard GitHub Actions runners: `runs-on: ubuntu-latest`
 - Ensure proper resource allocation by separating GPU-dependent from CPU-only workflows
-- The RunOn format includes the GitHub run ID for proper job tracking and resource management
+- Self-hosted runners provide dedicated GPU access for rendering tests that require real hardware
 
 ## Key Guidelines
 1. Follow Rust best practices and idiomatic patterns
