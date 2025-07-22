@@ -31,9 +31,11 @@ This is a Rust based repository using wgpu for graphics rendering, but the rende
 
 ### Visual Regression Testing
 - Visual regression tests generate images using `cargo test` (specifically the `generate_visual_regression_images` test)
-- The CI workflow accepts these pre-generated images and performs comparison against golden masters
+- Image generation AND comparison must happen on the same GPU-enabled runner to ensure generated images are available for comparison
+- The visual-diff workflow runs entirely on self-hosted GPU instances: generates images, then immediately compares them against golden masters on the same machine
 - Tests call the render_sandbox binary with appropriate parameters to generate test images
-- This follows the upstream pattern where external applications generate images and CI performs comparison
+- Image comparison uses NVIDIA FLIP for high-fidelity perceptual comparison, generating diff images and statistics
+- Results are uploaded as artifacts and committed to temporary branches for PR display
 
 ### Self-Hosted Runner Configuration Guidelines
 - GPU Instance Selection: Use self-hosted runner format `runs-on: [self-hosted, linux, x64]` for GPU-dependent workflows running visual regression tests
