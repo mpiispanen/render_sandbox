@@ -60,13 +60,286 @@ jobs:
 
   call-visual-diff:
     needs: generate-images
-    uses: mpiispanen/image-comparison-and-update/.github/workflows/visual-diff.yml@main
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       issues: write
       pull-requests: write
       actions: read
-    with:
-      artifact_name: test-outputs-${{ github.event.pull_request.number || github.run_number }}
-      golden_dir: golden
-      outputs_dir: outputs
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        lfs: true
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Download test artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: test-outputs-${{ github.event.pull_request.number || github.run_number }}
+        path: ./
+    
+    - name: Install NVIDIA FLIP for image comparison
+      run: |
+        pip install flip-evaluator
+        flip --help
+    
+    - name: Create necessary directories
+      run: |
+        mkdir -p diffs
+        mkdir -p golden
+    
+    - name: Check for existing test images
+      id: check_images
+      run: |
+        set -euo pipefail
+        
+        OUTPUTS_DIR="outputs"
+        
+        if [ ! -d "$OUTPUTS_DIR" ] || [ -z "$(ls -A $OUTPUTS_DIR/ 2>/dev/null)" ]; then
+          echo "❌ No test images found in $OUTPUTS_DIR/ directory"
+          echo "The visual diff job expects test images to already exist in $OUTPUTS_DIR/"
+          exit 1
+        fi
+        
+        IMAGE_COUNT=$(ls -1 $OUTPUTS_DIR/*.png 2>/dev/null | wc -l)
+        echo "Found $IMAGE_COUNT test images to compare:"
+        ls -la $OUTPUTS_DIR/
+        
+        echo "image_count=$IMAGE_COUNT" >> $GITHUB_OUTPUT
+        echo "outputs_dir=$OUTPUTS_DIR" >> $GITHUB_OUTPUT
+    
+    - name: Compare images and generate diffs
+      id: compare
+      run: |
+        set -euo pipefail
+        
+        OUTPUTS_DIR="outputs"
+        CHANGED_IMAGES=""
+        CHANGES_DETECTED=false
+        
+        echo "# Visual Regression Test Results" > comparison_report.md
+        echo "" >> comparison_report.md
+        echo "**Test Run:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> comparison_report.md
+        echo "" >> comparison_report.md
+        echo "## Summary" >> comparison_report.md
+        echo "" >> comparison_report.md
+        echo "| File | Status | FLIP Mean Error | Result |" >> comparison_report.md
+        echo "|------|--------|-----------------|--------|" >> comparison_report.md
+        
+        summary_data=""
+        echo "" > detailed_results.md
+        echo "## Detailed Results" >> detailed_results.md
+        echo "" >> detailed_results.md
+        
+        for output_file in "$OUTPUTS_DIR"/*.png; do
+          if [ ! -f "$output_file" ]; then
+            continue
+          fi
+          
+          filename=$(basename "$output_file")
+          golden_file="golden/$filename"
+          
+          echo "Processing $filename..."
+          
+          if [ ! -f "$golden_file" ]; then
+            summary_data="$summary_data| \`$filename\` | 🆕 New | N/A | Needs acceptance |\n"
+            
+            echo "### 🆕 $filename (New Image)" >> detailed_results.md
+            echo "" >> detailed_results.md
+            echo "**Status:** New image detected - no golden master exists" >> detailed_results.md
+            echo "**Action Required:** This image needs to be accepted as a new golden master" >> detailed_results.md
+            echo "" >> detailed_results.md
+            echo "To accept this new image: \`/accept-image $filename\`" >> detailed_results.md
+            echo "" >> detailed_results.md
+            echo "---" >> detailed_results.md
+            echo "" >> detailed_results.md
+            
+            CHANGED_IMAGES="$CHANGED_IMAGES $filename"
+            CHANGES_DETECTED=true
+          else
+            git lfs pull --include "$golden_file"
+            
+            basename_no_ext=$(basename "$filename" .png)
+            diff_basename="diff_${basename_no_ext}"
+            
+            echo "Running FLIP command: flip -r '$golden_file' -t '$output_file' -d diffs -b '$diff_basename' -v 2 -txt"
+            
+            flip_output=$(flip -r "$golden_file" -t "$output_file" -d diffs -b "$diff_basename" -v 2 -txt 2>&1)
+            flip_exit_code=$?
+            
+            if [ $flip_exit_code -ne 0 ]; then
+              echo "Error: FLIP command failed with exit code $flip_exit_code"
+              summary_data="$summary_data| \`$filename\` | ❌ Error | N/A | FLIP failed |\n"
+              continue
+            fi
+            
+            mean_error=$(echo "$flip_output" | grep "Mean:" | awk '{print $2}')
+            
+            is_different=$(echo "$mean_error" | awk '{if ($1 > 0.001) print "yes"; else print "no"}')
+            
+            if [ "$is_different" = "yes" ]; then
+              summary_data="$summary_data| \`$filename\` | 🔄 Changed | $mean_error | Needs review |\n"
+              CHANGED_IMAGES="$CHANGED_IMAGES $filename"
+              CHANGES_DETECTED=true
+              
+              echo "### 🔄 $filename (Changed)" >> detailed_results.md
+              echo "" >> detailed_results.md
+              echo "**Status:** Visual differences detected" >> detailed_results.md
+              echo "**FLIP Mean Error:** ${mean_error:-'N/A'}" >> detailed_results.md
+              echo "" >> detailed_results.md
+              echo "To accept this change: \`/accept-image $filename\`" >> detailed_results.md
+              echo "" >> detailed_results.md
+              echo "---" >> detailed_results.md
+              echo "" >> detailed_results.md
+            else
+              summary_data="$summary_data| \`$filename\` | ✅ Passed | $mean_error | No changes |\n"
+              
+              echo "### ✅ $filename (Passed)" >> detailed_results.md
+              echo "" >> detailed_results.md
+              echo "**Status:** No significant visual differences detected" >> detailed_results.md
+              echo "**FLIP Mean Error:** ${mean_error:-'N/A'} (below significance threshold)" >> detailed_results.md
+              echo "" >> detailed_results.md
+              echo "---" >> detailed_results.md
+              echo "" >> detailed_results.md
+            fi
+          fi
+        done
+        
+        echo -e "$summary_data" >> comparison_report.md
+        echo "" >> comparison_report.md
+        cat detailed_results.md >> comparison_report.md
+        
+        echo "changes_detected=$CHANGES_DETECTED" >> $GITHUB_OUTPUT
+        echo "changed_images=$CHANGED_IMAGES" >> $GITHUB_OUTPUT
+        
+        if [ "$CHANGES_DETECTED" = "false" ]; then
+          echo "✅ **All visual tests passed!** No differences detected." >> comparison_report.md
+        fi
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: visual-test-results-${{ github.event.pull_request.number || github.run_number }}
+        path: |
+          outputs/
+          diffs/
+          golden/
+          comparison_report.md
+        retention-days: 30
+    
+    - name: Comment PR with results
+      if: steps.compare.outputs.changes_detected == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('comparison_report.md', 'utf8');
+          
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number
+          });
+          
+          const botComments = comments.data.filter(comment => 
+            comment.user.type === 'Bot' && 
+            (comment.body.includes('Visual Regression Test Results') ||
+             comment.body.includes('Visual tests passed'))
+          );
+          
+          for (const comment of botComments) {
+            try {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: comment.id
+              });
+            } catch (error) {
+              console.log(`Failed to delete comment ${comment.id}: ${error.message}`);
+            }
+          }
+          
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: report
+          });
+    
+    - name: Comment PR with success
+      if: steps.compare.outputs.changes_detected == 'false'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const report = "✅ **Visual tests passed!** No differences detected.\n\n**Test Run:** " + new Date().toISOString().replace('T', ' ').substr(0, 19) + " UTC";
+          
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number
+          });
+          
+          const botComments = comments.data.filter(comment => 
+            comment.user.type === 'Bot' && 
+            (comment.body.includes('Visual Regression Test Results') ||
+             comment.body.includes('Visual tests passed'))
+          );
+          
+          for (const comment of botComments) {
+            try {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: comment.id
+              });
+            } catch (error) {
+              console.log(`Failed to delete comment ${comment.id}: ${error.message}`);
+            }
+          }
+          
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: report
+          });
+
+  cleanup-old-branches:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Clean up old visual diff branches
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        CUTOFF_DATE=$(date -d '7 days ago' '+%Y-%m-%d')
+        echo "Cleaning up visual diff branches older than: $CUTOFF_DATE"
+        
+        git branch -r | grep 'origin/visual-diff-' | while read -r branch; do
+          branch_name=${branch#origin/}
+          echo "Checking branch: $branch_name"
+          
+          if git show --format="%ci" --no-patch "$branch" > /dev/null 2>&1; then
+            BRANCH_DATE=$(git show --format="%ci" --no-patch "$branch" | cut -d' ' -f1)
+            echo "Branch date: $BRANCH_DATE"
+            
+            if [[ "$BRANCH_DATE" < "$CUTOFF_DATE" ]]; then
+              echo "Deleting old branch: $branch_name"
+              git push origin --delete "$branch_name" || echo "Failed to delete $branch_name (may not exist)"
+            else
+              echo "Keeping recent branch: $branch_name"
+            fi
+          else
+            echo "Could not get date for branch: $branch_name"
+          fi
+        done
