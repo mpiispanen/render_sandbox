@@ -45,11 +45,11 @@ jobs:
       run: |
         cargo build --release
     
-    - name: Generate test outputs via cargo test
+    - name: Run all GPU tests
       run: |
-        # Run visual regression tests which generate output images using the application
-        # Enable gpu-tests feature to run GPU-requiring tests on this GPU instance
-        cargo test generate_visual_regression_images --release --features gpu-tests -- --exact --nocapture
+        # Run all GPU-requiring tests on this GPU instance
+        # This includes visual regression tests, render tests, and GLTF tests that require GPU access
+        cargo test --release --features gpu-tests -- --nocapture
     
     - name: Upload test outputs
       uses: actions/upload-artifact@v4

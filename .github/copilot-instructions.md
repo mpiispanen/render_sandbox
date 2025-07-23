@@ -30,16 +30,17 @@ This is a Rust based repository using wgpu for graphics rendering, but the rende
 - The standard CI workflow runs non-GPU tests on GitHub Actions standard runners
 
 ### Visual Regression Testing
-- Visual regression tests generate images using `cargo test` (specifically the `generate_visual_regression_images` test)
+- GPU tests run via `cargo test --features gpu-tests` on self-hosted GPU instances, including visual regression tests that generate images
 - The visual-diff workflow runs on pull requests targeting the main branch (`pull_request: branches: [ main ]`)
-- The workflow separates image generation from comparison using upstream workflows:
-  - **generate-images job**: Runs on self-hosted GPU instances (`runs-on: [self-hosted, linux, x64]`) to generate test images
+- The workflow separates GPU test execution from image comparison using upstream workflows:
+  - **generate-images job**: Runs on self-hosted GPU instances (`runs-on: [self-hosted, linux, x64]`) to run all GPU tests and generate test images
   - **call-visual-diff job**: Calls the upstream `mpiispanen/image-comparison-and-update/.github/workflows/visual-diff.yml@main` workflow
-- Tests call the render_sandbox binary with appropriate parameters to generate test images in the `outputs/` directory
+- GPU tests include visual regression tests, render tests, and GLTF tests that require GPU access
+- Visual regression tests call the render_sandbox binary with appropriate parameters to generate test images in the `outputs/` directory
 - Image comparison uses the upstream workflow which handles NVIDIA FLIP comparison and PR reporting
 - The upstream workflow handles image display, diff generation, and acceptance commands (`/accept-image filename.png`)
 - Test images are uploaded as artifacts and passed to the upstream comparison workflow
-- **Critical**: The visual-diff workflow must be configured to trigger on pull requests targeting main to ensure visual regression testing runs as part of the PR flow
+- **Critical**: The visual-diff workflow must be configured to trigger on pull requests targeting main to ensure all GPU tests run as part of the PR flow
 
 ### Self-Hosted Runner Configuration Guidelines
 - GPU Instance Selection: Use self-hosted runner format `runs-on: [self-hosted, linux, x64]` for GPU-dependent workflows running visual regression tests
