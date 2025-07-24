@@ -63,6 +63,7 @@ jobs:
     uses: mpiispanen/image-comparison-and-update/.github/workflows/visual-diff.yml@main
     with:
       outputs_directory: 'outputs'
+      artifact_name: 'test-outputs-${{ github.event.pull_request.number || github.run_number }}'
     permissions:
       contents: write
       issues: write
