@@ -14,6 +14,8 @@ permissions:
 jobs:
   generate-images:
     runs-on: [self-hosted, linux, x64]
+    outputs:
+      artifact_name: ${{ steps.artifact_name.outputs.artifact_name }}
     
     steps:
     - name: Checkout code
@@ -51,10 +53,21 @@ jobs:
         # This includes visual regression tests, render tests, and GLTF tests that require GPU access
         cargo test --release --features gpu-tests -- --nocapture
     
+    - name: Set artifact name
+      id: artifact_name
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          ARTIFACT_NAME="test-outputs-${{ github.event.pull_request.number }}"
+        else
+          ARTIFACT_NAME="test-outputs-${{ github.run_number }}"
+        fi
+        echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+        echo "Using artifact name: $ARTIFACT_NAME"
+    
     - name: Upload test outputs
       uses: actions/upload-artifact@v4
       with:
-        name: test-outputs-${{ github.event.pull_request.number || github.run_number }}
+        name: ${{ steps.artifact_name.outputs.artifact_name }}
         path: outputs/
         retention-days: 30
 
@@ -63,7 +76,7 @@ jobs:
     uses: mpiispanen/image-comparison-and-update/.github/workflows/visual-diff.yml@main
     with:
       outputs_directory: 'outputs'
-      artifact_name: 'test-outputs-${{ github.event.pull_request.number || github.run_number }}'
+      artifact_name: ${{ needs.generate-images.outputs.artifact_name }}
     permissions:
       contents: write
       issues: write
