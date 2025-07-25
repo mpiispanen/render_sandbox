@@ -6,11 +6,13 @@ use render_sandbox::{
 /// Test helper for creating a minimal GPU context for testing
 pub struct TestGpuContext {
     pub graphics_api: WgpuGraphicsApi,
+    #[allow(dead_code)]
     pub resource_manager: ResourceManager,
 }
 
 impl TestGpuContext {
     /// Create a new test GPU context in headless mode
+    #[allow(dead_code)]
     pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         // Create headless graphics API
         let graphics_api = WgpuGraphicsApi::new(None).await?;
@@ -31,6 +33,7 @@ impl TestGpuContext {
     }
 
     /// Split into device and resource manager to avoid borrow checker issues
+    #[allow(dead_code)]
     pub fn split(&mut self) -> (&wgpu::Device, &mut ResourceManager) {
         (self.graphics_api.device(), &mut self.resource_manager)
     }

@@ -1,3 +1,4 @@
+#[cfg(feature = "gpu-tests")]
 use render_sandbox::{
     graphics_api::{GraphicsApi, WgpuGraphicsApi},
     renderer::Renderer,
@@ -5,6 +6,7 @@ use render_sandbox::{
 };
 
 #[test]
+#[cfg(feature = "gpu-tests")]
 fn test_forward_renderpass_enabled() {
     // Test that the forward renderpass is properly enabled and configured
     // This test runs in headless mode to work in CI environments
@@ -74,6 +76,7 @@ fn test_forward_renderpass_enabled() {
 }
 
 #[test]
+#[cfg(feature = "gpu-tests")]
 fn test_forward_renderpass_execution() {
     // Test that the forward renderpass can execute without errors
 
@@ -124,6 +127,7 @@ fn test_forward_renderpass_execution() {
 }
 
 #[test]
+#[cfg(feature = "gpu-tests")]
 fn test_render_stats_with_forward_pass() {
     // Test that rendering stats properly reflect forward renderpass usage
 
@@ -172,6 +176,7 @@ fn test_render_stats_with_forward_pass() {
 }
 
 #[test]
+#[cfg(feature = "gpu-tests")]
 fn test_forward_renderpass_with_scene_content() {
     // Test that forward renderpass works with scene content
 
