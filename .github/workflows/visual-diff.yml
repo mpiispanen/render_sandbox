@@ -1,0 +1,84 @@
+name: Visual Diff and PR Report
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  generate-images:
+    runs-on: [self-hosted, linux, x64]
+    outputs:
+      artifact_name: ${{ steps.artifact_name.outputs.artifact_name }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        lfs: true
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache cargo dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Create necessary directories
+      run: |
+        mkdir -p outputs
+        mkdir -p diffs
+        mkdir -p golden
+    
+    - name: Build render_sandbox
+      run: |
+        cargo build --release
+    
+    - name: Run all GPU tests
+      run: |
+        # Run all GPU-requiring tests on this GPU instance
+        # This includes visual regression tests, render tests, and GLTF tests that require GPU access
+        cargo test --release --features gpu-tests -- --nocapture
+    
+    - name: Set artifact name
+      id: artifact_name
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          ARTIFACT_NAME="test-outputs-${{ github.event.pull_request.number }}"
+        else
+          ARTIFACT_NAME="test-outputs-${{ github.run_number }}"
+        fi
+        echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+        echo "Using artifact name: $ARTIFACT_NAME"
+    
+    - name: Upload test outputs
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.artifact_name.outputs.artifact_name }}
+        path: outputs/
+        retention-days: 30
+
+  call-visual-diff:
+    needs: generate-images
+    uses: mpiispanen/image-comparison-and-update/.github/workflows/visual-diff.yml@main
+    with:
+      outputs_directory: 'outputs'
+      artifact_name: ${{ needs.generate-images.outputs.artifact_name }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: read

@@ -12,6 +12,42 @@ This is a Rust based repository using wgpu for graphics rendering, but the rende
 - Test: `cargo test`
 - Make sure CI tests pass and fix errors before committing if they do not
 
+## CI Infrastructure
+
+### GPU Testing Requirements
+- All tests that require GPU access should run on self-hosted GPU instances using our x64 Linux node
+- Use self-hosted runner configuration: `runs-on: [self-hosted, linux, x64]` for GPU-dependent workflows
+- Non-GPU tests (builds, linting, unit tests) should run on regular GitHub Actions runners: `runs-on: ubuntu-latest`
+- Visual regression tests MUST run on GPU instances and should fail if GPU access is unavailable
+- Do not implement synthetic/fallback image generation for GPU tests - real GPU rendering is required
+
+### Test Organization
+- **GPU-requiring tests**: Use `#[cfg(feature = "gpu-tests")]` attribute and run with `--features gpu-tests`
+- **Standard CI tests**: Run without the `gpu-tests` feature on `ubuntu-latest` runners
+- **GPU tests include**: Visual regression tests, rendering tests, GPU-dependent integration tests
+- **Standard tests include**: Unit tests, CLI parsing, architecture tests, build validation
+- The visual-diff workflow runs GPU tests on self-hosted instances with the `gpu-tests` feature enabled
+- The standard CI workflow runs non-GPU tests on GitHub Actions standard runners
+
+### Visual Regression Testing
+- GPU tests run via `cargo test --features gpu-tests` on self-hosted GPU instances, including visual regression tests that generate images
+- The visual-diff workflow runs on pull requests targeting the main branch (`pull_request: branches: [ main ]`)
+- The workflow separates GPU test execution from image comparison using upstream workflows:
+  - **generate-images job**: Runs on self-hosted GPU instances (`runs-on: [self-hosted, linux, x64]`) to run all GPU tests and generate test images
+  - **call-visual-diff job**: Calls the upstream `mpiispanen/image-comparison-and-update/.github/workflows/visual-diff.yml@main` workflow
+- GPU tests include visual regression tests, render tests, and GLTF tests that require GPU access
+- Visual regression tests call the render_sandbox binary with appropriate parameters to generate test images in the `outputs/` directory
+- Image comparison uses the upstream workflow which handles NVIDIA FLIP comparison and PR reporting
+- The upstream workflow handles image display, diff generation, and acceptance commands (`/accept-image filename.png`)
+- Test images are uploaded as artifacts and passed to the upstream comparison workflow
+- **Critical**: The visual-diff workflow must be configured to trigger on pull requests targeting main to ensure all GPU tests run as part of the PR flow
+
+### Self-Hosted Runner Configuration Guidelines
+- GPU Instance Selection: Use self-hosted runner format `runs-on: [self-hosted, linux, x64]` for GPU-dependent workflows running visual regression tests
+- Non-GPU workflows should continue using standard GitHub Actions runners: `runs-on: ubuntu-latest`
+- Ensure proper resource allocation by separating GPU-dependent from CPU-only workflows
+- Self-hosted runners provide dedicated GPU access for rendering tests that require real hardware
+
 ## Key Guidelines
 1. Follow Rust best practices and idiomatic patterns
 2. Maintain existing code structure and organization
