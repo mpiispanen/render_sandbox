@@ -921,7 +921,7 @@ collect_metrics() {
     local img_start=$(date +%s.%N)
     
     # Run FLIP comparison
-    flip_result=$(flip -r "golden/$(basename "$image")" -t "$image" -v 2)
+    flip_result=$(flip -r "golden/$(basename "$image")" -t "$image" -v)
     
     local img_end=$(date +%s.%N)
     local img_duration=$(echo "$img_end - $img_start" | bc -l)
