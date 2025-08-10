@@ -569,7 +569,7 @@ validate_image() {
   
   # Check file size (reasonable bounds)
   local size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file")
-  if [ $size -lt 100 ] || [ $size -gt 10485760 ]; then  # 100B to 10MB
+  if [ $size -lt "$MIN_FILE_SIZE" ] || [ $size -gt "$MAX_FILE_SIZE" ]; then  # $MIN_FILE_SIZE to $MAX_FILE_SIZE
     echo "ERROR: Suspicious file size: $size bytes"
     return 1
   fi
