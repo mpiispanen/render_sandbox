@@ -89,9 +89,7 @@ impl Renderer {
         ];
         let msaa_samples = graphics_api.validate_sample_count(requested_samples, formats);
 
-        log::info!(
-            "Creating renderer with {msaa_samples} MSAA samples for formats: {formats:?}"
-        );
+        log::info!("Creating renderer with {msaa_samples} MSAA samples for formats: {formats:?}");
 
         let config = RendererConfig {
             msaa_samples,

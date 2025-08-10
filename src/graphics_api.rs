@@ -185,9 +185,7 @@ impl GraphicsApi for WgpuGraphicsApi {
                 _ => vec![1, 2, 4, 8, 16], // Most color formats support these
             };
 
-            log::debug!(
-                "Format {format:?} assumed to support sample counts: {format_samples:?}"
-            );
+            log::debug!("Format {format:?} assumed to support sample counts: {format_samples:?}");
 
             // Keep intersection of supported sample counts across all formats
             conservative_samples.retain(|sample| format_samples.contains(sample));
