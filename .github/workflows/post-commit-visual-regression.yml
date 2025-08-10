@@ -1,15 +1,14 @@
-name: Visual Diff and PR Report
+name: Post-Commit Visual Regression
 
 on:
-  pull_request:
+  push:
     branches: [ main ]
-    types: [opened, synchronize]
   workflow_dispatch:
 
 permissions:
   contents: write
   issues: write
-  pull-requests: write
+  actions: read
 
 jobs:
   generate-images:
@@ -56,11 +55,7 @@ jobs:
     - name: Set artifact name
       id: artifact_name
       run: |
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          ARTIFACT_NAME="test-outputs-${{ github.event.pull_request.number }}"
-        else
-          ARTIFACT_NAME="test-outputs-${{ github.run_number }}"
-        fi
+        ARTIFACT_NAME="post-commit-outputs-${{ github.run_number }}"
         echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
         echo "Using artifact name: $ARTIFACT_NAME"
     
@@ -71,18 +66,17 @@ jobs:
         path: outputs/
         retention-days: 30
 
-  call-visual-diff:
+  post-commit-visual-validation:
     needs: generate-images
-    uses: mpiispanen/image-comparison-and-update/.github/workflows/visual-diff.yml@main
+    uses: mpiispanen/image-comparison-and-update/.github/workflows/post-commit-visual-validation.yml@main
     with:
       outputs_directory: 'outputs'
       artifact_name: ${{ needs.generate-images.outputs.artifact_name }}
-      pr_number: ${{ github.event.pull_request.number }}
-      golden_directory: 'golden'
-      flip_threshold: '0.01'
-      enable_metrics: true
+      auto_update_golden: false
+      update_threshold: '0.01'
+      issue_labels: 'visual-regression,post-commit,bug'
+      issue_title_prefix: 'Post-Commit Visual Regression'
     permissions:
       contents: write
       issues: write
-      pull-requests: write
       actions: read

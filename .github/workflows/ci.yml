@@ -9,6 +9,11 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# Note: This workflow runs standard CI tests (build, unit tests, linting) for both PRs and pushes to main.
+# Visual regression testing is handled separately:
+# - For PRs: .github/workflows/visual-diff.yml (compares against golden masters with PR comments)
+# - For main branch: .github/workflows/post-commit-visual-regression.yml (validates golden masters with GitHub issues)
+
 jobs:
   test:
     name: Test

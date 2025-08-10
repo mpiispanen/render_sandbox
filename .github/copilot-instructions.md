@@ -30,6 +30,10 @@ This is a Rust based repository using wgpu for graphics rendering, but the rende
 - The standard CI workflow runs non-GPU tests on GitHub Actions standard runners
 
 ### Visual Regression Testing
+
+The repository implements a comprehensive visual regression testing system with both pre-commit (PR) and post-commit (main branch) validation:
+
+#### Pre-Commit Visual Testing (Pull Requests)
 - GPU tests run via `cargo test --features gpu-tests` on self-hosted GPU instances, including visual regression tests that generate images
 - The visual-diff workflow runs on pull requests targeting the main branch (`pull_request: branches: [ main ]`)
 - The workflow separates GPU test execution from image comparison using upstream workflows:
@@ -40,7 +44,23 @@ This is a Rust based repository using wgpu for graphics rendering, but the rende
 - Image comparison uses the upstream workflow which handles NVIDIA FLIP comparison and PR reporting
 - The upstream workflow handles image display, diff generation, and acceptance commands (`/accept-image filename.png`)
 - Test images are uploaded as artifacts and passed to the upstream comparison workflow
-- **Critical**: The visual-diff workflow must be configured to trigger on pull requests targeting main to ensure all GPU tests run as part of the PR flow
+
+#### Post-Commit Visual Testing (Main Branch Validation)
+- Post-commit visual regression testing is implemented via `.github/workflows/post-commit-visual-regression.yml`
+- Uses upstream `mpiispanen/image-comparison-and-update/.github/workflows/post-commit-visual-validation.yml@main`
+- Triggered automatically on every push to main branch
+- Creates GitHub issues for visual regression failures instead of PR comments
+- Supports automatic golden master updates with configurable thresholds
+- Automatically closes resolved issues when visual tests pass again
+- **Failure Handling**: Creates detailed GitHub issues with FLIP error analysis and troubleshooting steps
+- **Auto-Update Support**: Optional automatic golden master updates with safety checks and audit trails
+- **Issue Management**: Smart deduplication and automatic closure of resolved issues
+
+#### Workflow Separation
+- **CI Workflow**: Handles standard build, unit tests, and linting for both PRs and main branch pushes
+- **Visual-Diff Workflow**: Handles visual regression testing for pull requests with PR comment integration
+- **Post-Commit Visual Regression**: Handles visual validation after merge to main with GitHub issue management
+- **Critical**: All visual workflows are properly configured to ensure comprehensive visual regression coverage
 
 ### Self-Hosted Runner Configuration Guidelines
 - GPU Instance Selection: Use self-hosted runner format `runs-on: [self-hosted, linux, x64]` for GPU-dependent workflows running visual regression tests
