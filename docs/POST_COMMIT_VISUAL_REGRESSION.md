@@ -552,12 +552,18 @@ validate_image() {
   fi
   
   # Check dimensions (reasonable bounds)
+  # Dimension limits are configurable via environment variables.
+  # Defaults: min=10, max=4096 (chosen to catch likely corrupt images and avoid excessive resource usage).
+  local MIN_WIDTH="${MIN_IMAGE_WIDTH:-10}"
+  local MAX_WIDTH="${MAX_IMAGE_WIDTH:-4096}"
+  local MIN_HEIGHT="${MIN_IMAGE_HEIGHT:-10}"
+  local MAX_HEIGHT="${MAX_IMAGE_HEIGHT:-4096}"
   local dimensions=$(identify -format "%w %h" "$file")
   local width=$(echo $dimensions | cut -d' ' -f1)
   local height=$(echo $dimensions | cut -d' ' -f2)
   
-  if [ $width -lt 10 ] || [ $width -gt 4096 ] || [ $height -lt 10 ] || [ $height -gt 4096 ]; then
-    echo "ERROR: Suspicious dimensions: ${width}x${height}"
+  if [ $width -lt $MIN_WIDTH ] || [ $width -gt $MAX_WIDTH ] || [ $height -lt $MIN_HEIGHT ] || [ $height -gt $MAX_HEIGHT ]; then
+    echo "ERROR: Suspicious dimensions: ${width}x${height} (limits: ${MIN_WIDTH}-${MAX_WIDTH}x${MIN_HEIGHT}-${MAX_HEIGHT})"
     return 1
   fi
   
