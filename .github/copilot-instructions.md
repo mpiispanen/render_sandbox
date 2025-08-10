@@ -45,21 +45,22 @@ The repository implements a comprehensive visual regression testing system with 
 - The upstream workflow handles image display, diff generation, and acceptance commands (`/accept-image filename.png`)
 - Test images are uploaded as artifacts and passed to the upstream comparison workflow
 
-#### Post-Commit Visual Testing (Future Implementation)
-- Post-commit visual regression testing is planned via upstream repository enhancements
-- Comprehensive specifications have been created in `docs/POST_COMMIT_VISUAL_REGRESSION.md`
-- The specifications include requirements for GitHub issue management, automatic golden master updates, and multi-channel notifications
-- Implementation will be done in the upstream `mpiispanen/image-comparison-and-update` repository to benefit all users
-- Once available, this will provide continuous validation of main branch visual outputs after merge
-- **Failure Handling**: Will create GitHub issues for visual regression failures instead of PR comments
-- **Auto-Update Support**: Will support automatic golden master updates with safety checks and audit trails
-- **Issue Management**: Will automatically close resolved issues when visual tests pass again
+#### Post-Commit Visual Testing (Main Branch Validation)
+- Post-commit visual regression testing is implemented via `.github/workflows/post-commit-visual-regression.yml`
+- Uses upstream `mpiispanen/image-comparison-and-update/.github/workflows/post-commit-visual-validation.yml@main`
+- Triggered automatically on every push to main branch
+- Creates GitHub issues for visual regression failures instead of PR comments
+- Supports automatic golden master updates with configurable thresholds
+- Automatically closes resolved issues when visual tests pass again
+- **Failure Handling**: Creates detailed GitHub issues with FLIP error analysis and troubleshooting steps
+- **Auto-Update Support**: Optional automatic golden master updates with safety checks and audit trails
+- **Issue Management**: Smart deduplication and automatic closure of resolved issues
 
 #### Workflow Separation
 - **CI Workflow**: Handles standard build, unit tests, and linting for both PRs and main branch pushes
 - **Visual-Diff Workflow**: Handles visual regression testing for pull requests with PR comment integration
-- **Post-Commit Visual Regression**: (Planned) Will handle visual validation after merge to main with issue creation
-- **Critical**: Both visual workflows must be configured to trigger appropriately to ensure comprehensive visual regression coverage
+- **Post-Commit Visual Regression**: Handles visual validation after merge to main with GitHub issue management
+- **Critical**: All visual workflows are properly configured to ensure comprehensive visual regression coverage
 
 ### Self-Hosted Runner Configuration Guidelines
 - GPU Instance Selection: Use self-hosted runner format `runs-on: [self-hosted, linux, x64]` for GPU-dependent workflows running visual regression tests
