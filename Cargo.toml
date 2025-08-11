@@ -3,6 +3,10 @@ name = "render_sandbox"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+gpu-tests = []
+
 [lib]
 name = "render_sandbox"
 path = "src/lib.rs"
