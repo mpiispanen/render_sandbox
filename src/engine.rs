@@ -1,6 +1,7 @@
 use crate::graphics_api::{GraphicsApi, WgpuGraphicsApi};
 use crate::renderer::Renderer;
 use crate::scene::Scene;
+use crate::Args;
 use winit::{dpi::PhysicalSize, event::WindowEvent, window::Window};
 
 /// Error types for engine operations
@@ -29,9 +30,7 @@ pub trait Engine: Send + 'static {
     /// Create a new engine instance
     fn new(
         window_handle: Option<&Window>,
-        gltf_path: &str,
-        width: u32,
-        height: u32,
+        args: &Args,
     ) -> impl std::future::Future<Output = Result<Self, EngineError>>
     where
         Self: Sized;
@@ -56,22 +55,21 @@ pub trait Engine: Send + 'static {
 pub struct PlaceholderEngine {
     frame_count: u32,
     is_headless: bool,
+    width: u32,
+    height: u32,
 }
 
 impl Engine for PlaceholderEngine {
-    async fn new(
-        _window_handle: Option<&Window>,
-        _gltf_path: &str,
-        _width: u32,
-        _height: u32,
-    ) -> Result<Self, EngineError> {
+    async fn new(window_handle: Option<&Window>, args: &Args) -> Result<Self, EngineError> {
         log::info!(
             "Creating placeholder engine (headless: {})",
-            _window_handle.is_none()
+            window_handle.is_none()
         );
         Ok(PlaceholderEngine {
             frame_count: 0,
-            is_headless: _window_handle.is_none(),
+            is_headless: window_handle.is_none(),
+            width: args.width,
+            height: args.height,
         })
     }
 
@@ -98,10 +96,17 @@ impl Engine for PlaceholderEngine {
 
     fn get_rendered_frame_data(&self) -> Option<Vec<u8>> {
         if self.is_headless {
-            // Return placeholder RGBA data (tiny 2x2 image)
-            Some(vec![
-                255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
-            ])
+            // Return placeholder RGBA data using the actual resolution from args
+            let size = (self.width * self.height * 4) as usize;
+            Some(
+                vec![
+                    255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
+                ]
+                .into_iter()
+                .cycle()
+                .take(size)
+                .collect(),
+            )
         } else {
             None
         }
@@ -119,26 +124,23 @@ pub struct RealTimeEngine {
 }
 
 impl RealTimeEngine {
-    async fn new_impl(
-        window_handle: Option<&Window>,
-        gltf_path: &str,
-        width: u32,
-        height: u32,
-    ) -> Result<Self, EngineError> {
+    async fn new_impl(window_handle: Option<&Window>, args: &Args) -> Result<Self, EngineError> {
         log::info!(
             "Creating real-time engine (headless: {}, {}x{})",
             window_handle.is_none(),
-            width,
-            height
+            args.width,
+            args.height
         );
 
-        // Initialize graphics API
-        let graphics_api = WgpuGraphicsApi::new(window_handle).await.map_err(|e| {
-            EngineError::InitializationError(format!("Failed to create graphics API: {e}"))
-        })?;
+        // Initialize graphics API with the specified resolution
+        let graphics_api = WgpuGraphicsApi::new(window_handle, args.width, args.height)
+            .await
+            .map_err(|e| {
+                EngineError::InitializationError(format!("Failed to create graphics API: {e}"))
+            })?;
 
-        // Create renderer
-        let mut renderer = Renderer::new(Box::new(graphics_api));
+        // Create renderer with the specified configuration
+        let mut renderer = Renderer::new(Box::new(graphics_api), args.samples);
 
         // Initialize renderer
         renderer.initialize().map_err(|e| {
@@ -147,7 +149,7 @@ impl RealTimeEngine {
 
         // Set renderer size for headless mode
         if window_handle.is_none() {
-            if let Err(e) = renderer.resize(width, height) {
+            if let Err(e) = renderer.resize(args.width, args.height) {
                 log::error!("Failed to resize renderer for headless mode: {e}");
             }
         }
@@ -156,9 +158,9 @@ impl RealTimeEngine {
         let mut scene = Scene::new();
 
         // Try to load a GLTF file if available, otherwise create a GLTF-style test triangle
-        let triangle_created = if std::path::Path::new(gltf_path).exists() {
-            log::info!("Loading triangle from GLTF file: {gltf_path}");
-            match renderer.load_gltf_to_scene(gltf_path, &mut scene) {
+        let triangle_created = if std::path::Path::new(&args.gltf_path).exists() {
+            log::info!("Loading triangle from GLTF file: {}", args.gltf_path);
+            match renderer.load_gltf_to_scene(&args.gltf_path, &mut scene) {
                 Ok(()) => {
                     log::info!("Successfully loaded GLTF triangle");
                     true
@@ -189,20 +191,15 @@ impl RealTimeEngine {
             scene,
             is_headless: window_handle.is_none(),
             frame_count: 0,
-            width,
-            height,
+            width: args.width,
+            height: args.height,
         })
     }
 }
 
 impl Engine for RealTimeEngine {
-    async fn new(
-        window_handle: Option<&Window>,
-        gltf_path: &str,
-        width: u32,
-        height: u32,
-    ) -> Result<Self, EngineError> {
-        Self::new_impl(window_handle, gltf_path, width, height).await
+    async fn new(window_handle: Option<&Window>, args: &Args) -> Result<Self, EngineError> {
+        Self::new_impl(window_handle, args).await
     }
 
     fn resize(&mut self, new_size: PhysicalSize<u32>) {

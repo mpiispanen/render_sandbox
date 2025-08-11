@@ -79,15 +79,28 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    /// Create a new renderer
-    pub fn new(graphics_api: Box<dyn GraphicsApi>) -> Self {
-        log::info!("Creating renderer");
+    /// Create a new renderer with specified MSAA samples
+    pub fn new(graphics_api: Box<dyn GraphicsApi>, requested_samples: u32) -> Self {
+        // Validate the sample count with the graphics API for the formats we'll use
+        let surface_format = graphics_api.surface_format();
+        let formats = &[
+            surface_format,                    // Back buffer (color attachment)
+            wgpu::TextureFormat::Depth32Float, // Depth buffer
+        ];
+        let msaa_samples = graphics_api.validate_sample_count(requested_samples, formats);
+
+        log::info!("Creating renderer with {msaa_samples} MSAA samples for formats: {formats:?}");
+
+        let config = RendererConfig {
+            msaa_samples,
+            ..Default::default()
+        };
 
         Self {
             graphics_api,
             resource_manager: ResourceManager::new(),
             render_graph: RenderGraph::new(),
-            config: RendererConfig::default(),
+            config,
             stats: RenderStats::default(),
             initialized: false,
         }
@@ -130,7 +143,8 @@ impl Renderer {
             .with_resource("DepthBuffer", ResourceUsage::ReadWrite)
             .with_clear_color([0.1, 0.2, 0.3, 1.0]) // Dark blue background
             .with_resolution(width, height)
-            .with_surface_format(surface_format);
+            .with_surface_format(surface_format)
+            .with_sample_count(self.config.msaa_samples);
         self.render_graph.add_pass(Box::new(forward_pass));
 
         // Compile the render graph

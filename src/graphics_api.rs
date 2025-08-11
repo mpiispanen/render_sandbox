@@ -27,9 +27,15 @@ pub trait GraphicsApi: Send + Sync {
     /// Initialize the graphics API
     fn new(
         window: Option<&Window>,
+        width: u32,
+        height: u32,
     ) -> impl std::future::Future<Output = Result<Self, GraphicsError>>
     where
         Self: Sized;
+
+    /// Validate and clamp MSAA sample count to supported values for given texture formats
+    fn validate_sample_count(&self, requested_samples: u32, formats: &[wgpu::TextureFormat])
+        -> u32;
 
     /// Resize the surface
     fn resize(&mut self, width: u32, height: u32);
@@ -65,8 +71,12 @@ pub struct WgpuGraphicsApi {
 
 impl WgpuGraphicsApi {
     /// Create a new wgpu graphics API instance
-    pub async fn new_impl(window: Option<&Window>) -> Result<Self, GraphicsError> {
-        log::info!("Initializing wgpu graphics API");
+    pub async fn new_impl(
+        window: Option<&Window>,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, GraphicsError> {
+        log::info!("Initializing wgpu graphics API with resolution {width}x{height}");
 
         // Create instance
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -102,7 +112,7 @@ impl WgpuGraphicsApi {
             // We'll configure the surface later when we have the device
             (adapter, surface_format, (size.width, size.height), true)
         } else {
-            // For headless mode, request adapter without surface
+            // For headless mode, request adapter without surface, use provided dimensions
             let adapter = instance
                 .request_adapter(&wgpu::RequestAdapterOptions {
                     power_preference: wgpu::PowerPreference::default(),
@@ -115,7 +125,7 @@ impl WgpuGraphicsApi {
             (
                 adapter,
                 wgpu::TextureFormat::Rgba8UnormSrgb,
-                (800, 600),
+                (width, height),
                 false,
             )
         };
@@ -149,8 +159,71 @@ impl WgpuGraphicsApi {
 }
 
 impl GraphicsApi for WgpuGraphicsApi {
-    async fn new(window: Option<&Window>) -> Result<Self, GraphicsError> {
-        Self::new_impl(window).await
+    async fn new(window: Option<&Window>, width: u32, height: u32) -> Result<Self, GraphicsError> {
+        Self::new_impl(window, width, height).await
+    }
+
+    fn validate_sample_count(
+        &self,
+        requested_samples: u32,
+        formats: &[wgpu::TextureFormat],
+    ) -> u32 {
+        // For now, we'll use a conservative approach based on format types
+        // TODO: Query actual device capabilities when wgpu provides a better API for this
+
+        let mut conservative_samples = vec![1, 2, 4, 8, 16]; // Start optimistic
+
+        for &format in formats {
+            let format_samples = match format {
+                // Depth formats: WebGPU spec only guarantees [1, 4]
+                wgpu::TextureFormat::Depth32Float
+                | wgpu::TextureFormat::Depth24Plus
+                | wgpu::TextureFormat::Depth24PlusStencil8 => {
+                    vec![1, 4] // Conservative WebGPU spec guarantee
+                }
+                // Color formats: typically support more, but be conservative for now
+                _ => vec![1, 2, 4, 8, 16], // Most color formats support these
+            };
+
+            log::debug!("Format {format:?} assumed to support sample counts: {format_samples:?}");
+
+            // Keep intersection of supported sample counts across all formats
+            conservative_samples.retain(|sample| format_samples.contains(sample));
+        }
+
+        // If we have depth formats, limit to WebGPU guaranteed values for safety
+        let has_depth_format = formats.iter().any(|&fmt| {
+            matches!(
+                fmt,
+                wgpu::TextureFormat::Depth32Float
+                    | wgpu::TextureFormat::Depth24Plus
+                    | wgpu::TextureFormat::Depth24PlusStencil8
+            )
+        });
+
+        if has_depth_format {
+            conservative_samples.retain(|&sample| sample == 1 || sample == 4);
+        }
+
+        log::debug!(
+            "Final supported sample counts for formats {formats:?}: {conservative_samples:?}"
+        );
+
+        // Find the closest valid sample count that doesn't exceed the requested value
+        let clamped = conservative_samples
+            .iter()
+            .rev() // Start from highest to find the best match
+            .find(|&&samples| samples <= requested_samples)
+            .copied()
+            .unwrap_or(1); // Default to 1 if no valid value found
+
+        if clamped != requested_samples && !conservative_samples.is_empty() {
+            log::warn!(
+                "MSAA sample count {requested_samples} not supported by all texture formats {formats:?}, clamping to {clamped} (conservative approach - supported: {conservative_samples:?})"
+            );
+        }
+
+        clamped
     }
 
     fn resize(&mut self, width: u32, height: u32) {

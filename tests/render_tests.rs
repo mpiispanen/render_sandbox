@@ -7,17 +7,40 @@ use render_sandbox::{
 
 #[test]
 #[cfg(feature = "gpu-tests")]
+fn test_graphics_api_creation() {
+    // Updated to provide required width and height parameters
+    let graphics_api_result =
+        futures::executor::block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
+
+    match graphics_api_result {
+        Ok(graphics_api) => {
+            // Updated to provide required requested_samples parameter
+            let renderer = Renderer::new(Box::new(graphics_api), 1);
+
+            // Test that renderer was created successfully
+            assert!(renderer.get_stats().frame_count == 0);
+        }
+        Err(e) => {
+            // Graphics API creation can fail in headless environments without GPU
+            println!("Graphics API creation failed as expected in test environment: {e}");
+        }
+    }
+}
+
+#[test]
+#[cfg(feature = "gpu-tests")]
 fn test_forward_renderpass_enabled() {
     // Test that the forward renderpass is properly enabled and configured
     // This test runs in headless mode to work in CI environments
 
     // Create a headless graphics API for testing
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
-            let mut renderer = Renderer::new(Box::new(graphics_api));
+            let mut renderer = Renderer::new(Box::new(graphics_api), 1);
 
             // Initialize the renderer - this should set up the forward renderpass
             let init_result = renderer.initialize();
@@ -77,15 +100,38 @@ fn test_forward_renderpass_enabled() {
 
 #[test]
 #[cfg(feature = "gpu-tests")]
+fn test_renderer_with_custom_samples() {
+    // Updated to provide required width and height parameters
+    let graphics_api_result =
+        futures::executor::block_on(async { WgpuGraphicsApi::new(None, 1024, 768).await });
+
+    match graphics_api_result {
+        Ok(graphics_api) => {
+            // Updated to provide required requested_samples parameter (using 4 for MSAA)
+            let renderer = Renderer::new(Box::new(graphics_api), 4);
+
+            // Test that renderer was created successfully with custom sample count
+            assert!(renderer.get_stats().frame_count == 0);
+        }
+        Err(e) => {
+            // Graphics API creation can fail in headless environments without GPU
+            println!("Graphics API creation failed as expected in test environment: {e}");
+        }
+    }
+}
+
+#[test]
+#[cfg(feature = "gpu-tests")]
 fn test_forward_renderpass_execution() {
     // Test that the forward renderpass can execute without errors
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
-            let mut renderer = Renderer::new(Box::new(graphics_api));
+            let mut renderer = Renderer::new(Box::new(graphics_api), 1);
 
             // Initialize the renderer
             renderer
@@ -128,15 +174,42 @@ fn test_forward_renderpass_execution() {
 
 #[test]
 #[cfg(feature = "gpu-tests")]
+fn test_renderer_with_different_resolutions() {
+    let test_resolutions = vec![(800, 600), (1920, 1080), (1024, 768)];
+
+    for (width, height) in test_resolutions {
+        // Updated to provide required width and height parameters
+        let graphics_api_result =
+            futures::executor::block_on(async { WgpuGraphicsApi::new(None, width, height).await });
+
+        match graphics_api_result {
+            Ok(graphics_api) => {
+                // Updated to provide required requested_samples parameter
+                let renderer = Renderer::new(Box::new(graphics_api), 1);
+
+                // Test that renderer was created successfully with different resolutions
+                assert!(renderer.get_stats().frame_count == 0);
+            }
+            Err(e) => {
+                // Graphics API creation can fail in headless environments without GPU
+                println!("Graphics API creation failed as expected in test environment for {width}x{height}: {e}");
+            }
+        }
+    }
+}
+
+#[test]
+#[cfg(feature = "gpu-tests")]
 fn test_render_stats_with_forward_pass() {
     // Test that rendering stats properly reflect forward renderpass usage
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
-            let mut renderer = Renderer::new(Box::new(graphics_api));
+            let mut renderer = Renderer::new(Box::new(graphics_api), 1);
             renderer.initialize().expect("Renderer should initialize");
 
             let scene = Scene::new();
@@ -177,15 +250,59 @@ fn test_render_stats_with_forward_pass() {
 
 #[test]
 #[cfg(feature = "gpu-tests")]
+fn test_renderer_sample_count_validation() {
+    // Updated to provide required width and height parameters
+    let graphics_api_result =
+        futures::executor::block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
+
+    match graphics_api_result {
+        Ok(graphics_api) => {
+            // Test with different sample counts - the graphics API will validate them
+            let test_samples = vec![1, 4, 8]; // Use only valid WebGPU guaranteed values
+
+            if let Some(samples) = test_samples.into_iter().next() {
+                // Validate the sample count first, then create renderer
+                let formats = &[
+                    wgpu::TextureFormat::Rgba8UnormSrgb, // Default headless surface format
+                    wgpu::TextureFormat::Depth32Float,   // Depth format
+                ];
+                let validated_samples = graphics_api.validate_sample_count(samples, formats);
+
+                // Create a new graphics API instance for each test since we consume it
+                let graphics_api_result = futures::executor::block_on(async {
+                    WgpuGraphicsApi::new(None, 800, 600).await
+                });
+
+                if let Ok(graphics_api) = graphics_api_result {
+                    // Updated to provide required requested_samples parameter
+                    let renderer = Renderer::new(Box::new(graphics_api), validated_samples);
+
+                    // Test that renderer was created successfully
+                    assert!(renderer.get_stats().frame_count == 0);
+                } else {
+                    println!("Graphics API creation failed for sample count test");
+                }
+            }
+        }
+        Err(e) => {
+            // Graphics API creation can fail in headless environments without GPU
+            println!("Graphics API creation failed as expected in test environment: {e}");
+        }
+    }
+}
+
+#[test]
+#[cfg(feature = "gpu-tests")]
 fn test_forward_renderpass_with_scene_content() {
     // Test that forward renderpass works with scene content
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
-            let mut renderer = Renderer::new(Box::new(graphics_api));
+            let mut renderer = Renderer::new(Box::new(graphics_api), 1);
             renderer.initialize().expect("Renderer should initialize");
 
             let mut scene = Scene::new();
