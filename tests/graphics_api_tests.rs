@@ -1,9 +1,5 @@
 /// Tests for graphics API functionality
 /// These tests focus on the graphics API abstraction and validation logic
-
-/// Tests for graphics API functionality
-/// These tests focus on the graphics API abstraction and validation logic
-
 #[test]
 fn test_sample_count_validation_logic() {
     // Test the validation logic understanding that sample count support is format-dependent
