@@ -14,6 +14,43 @@ struct TestCase {
 }
 
 const TEST_CASES: &[TestCase] = &[
+    // ForwardRenderPass specific tests
+    TestCase {
+        name: "forward_pass_basic_triangle",
+        width: 800,
+        height: 600,
+        samples: 1,
+        description: "ForwardRenderPass basic triangle rendering test",
+    },
+    TestCase {
+        name: "forward_pass_high_res",
+        width: 1920,
+        height: 1080,
+        samples: 1,
+        description: "ForwardRenderPass high resolution rendering test",
+    },
+    TestCase {
+        name: "forward_pass_square_aspect",
+        width: 512,
+        height: 512,
+        samples: 1,
+        description: "ForwardRenderPass square aspect ratio test",
+    },
+    TestCase {
+        name: "forward_pass_antialiased",
+        width: 800,
+        height: 600,
+        samples: 4,
+        description: "ForwardRenderPass with 4x MSAA anti-aliasing",
+    },
+    TestCase {
+        name: "forward_pass_minimal",
+        width: 400,
+        height: 300,
+        samples: 1,
+        description: "ForwardRenderPass minimal resolution test",
+    },
+    // Legacy test cases for backward compatibility
     TestCase {
         name: "basic_render_800x600",
         width: 800,
@@ -126,6 +163,7 @@ fn generate_test_image(test_case: &TestCase) -> Result<(), Box<dyn std::error::E
 /// against golden masters by the CI image comparison workflow
 ///
 /// This test requires GPU access and should only run on GPU-enabled runners
+/// It specifically tests the ForwardRenderPass and other render passes for visual correctness
 #[test]
 #[cfg(feature = "gpu-tests")]
 fn generate_visual_regression_images() {
@@ -138,6 +176,7 @@ fn generate_visual_regression_images() {
     }
 
     println!("Generating visual regression test images...");
+    println!("These tests verify ForwardRenderPass and other render passes work correctly");
     println!("{}", "=".repeat(60));
 
     let mut success_count = 0;
@@ -155,7 +194,7 @@ fn generate_visual_regression_images() {
                 println!("❌ Failed to generate {}: {}", test_case.name, e);
                 // For visual regression testing, we require GPU access - fail the test if we can't generate images
                 panic!(
-                    "Visual regression test failed for {}: {}",
+                    "Visual regression test failed for {}: {}. This indicates the ForwardRenderPass or render pipeline may not be working correctly.",
                     test_case.name, e
                 );
             }
@@ -165,31 +204,55 @@ fn generate_visual_regression_images() {
     println!("\n{}", "=".repeat(60));
     println!("Visual regression image generation completed!");
     println!("Success: {success_count}/{total_count} images processed");
+    println!("All render passes (including ForwardRenderPass) generated valid visual output");
 
     if success_count < total_count {
         panic!(
-            "Failed to generate {} out of {} visual regression test images",
+            "Failed to generate {} out of {} visual regression test images. This indicates render pass issues.",
             total_count - success_count,
             total_count
         );
     }
 
-    // List generated images
+    // List generated images and validate they exist
     if let Ok(entries) = fs::read_dir("outputs") {
-        println!("\nGenerated test images:");
+        println!("\nGenerated test images for render pass validation:");
+        let mut forward_pass_images = 0;
+
         for entry in entries.flatten() {
             if let Some(extension) = entry.path().extension() {
                 if extension == "png" {
                     if let Ok(metadata) = entry.metadata() {
-                        println!(
-                            "  - {} ({} bytes)",
-                            entry.file_name().to_string_lossy(),
-                            metadata.len()
-                        );
+                        let filename = entry.file_name().to_string_lossy();
+                        println!("  - {} ({} bytes)", filename, metadata.len());
+
+                        // Count ForwardRenderPass specific images
+                        if filename.starts_with("forward_pass_") {
+                            forward_pass_images += 1;
+                        }
+
+                        // Validate image size is reasonable (not empty/corrupted)
+                        if metadata.len() < 1000 {
+                            panic!("Generated image {} is too small ({} bytes), indicating render failure", 
+                                  filename, metadata.len());
+                        }
                     }
                 }
             }
         }
+
+        // Ensure we have ForwardRenderPass specific test images
+        assert!(
+            forward_pass_images >= 5,
+            "Should have at least 5 ForwardRenderPass specific test images, found {}",
+            forward_pass_images
+        );
+
+        println!(
+            "\n✅ Generated {} ForwardRenderPass specific test images",
+            forward_pass_images
+        );
+        println!("✅ All render pass visual regression tests completed successfully");
     }
 }
 

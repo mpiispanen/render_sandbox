@@ -45,6 +45,13 @@ The repository implements a comprehensive visual regression testing system with 
 - The upstream workflow handles image display, diff generation, and acceptance commands (`/accept-image filename.png`)
 - Test images are uploaded as artifacts and passed to the upstream comparison workflow
 
+#### Render Pass Testing Requirements
+- **All render passes MUST have individual visual tests**: Each render pass (ForwardRenderPass, etc.) must have dedicated tests that verify image correctness
+- **Render pass tests must generate specific images**: Tests should create distinct visual outputs that can be compared against golden masters
+- **Individual pass isolation**: Tests should verify each render pass works correctly in isolation as well as in the full pipeline
+- **Visual test naming**: Render pass tests should use descriptive names like `forward_pass_basic_triangle`, `forward_pass_antialiased`, etc.
+- **Pipeline abstraction testing**: All render pass tests must verify the new pipeline abstraction system works correctly
+
 #### Post-Commit Visual Testing (Main Branch Validation)
 - Post-commit visual regression testing is implemented via `.github/workflows/post-commit-visual-regression.yml`
 - Uses upstream `mpiispanen/image-comparison-and-update/.github/workflows/post-commit-visual-validation.yml@main`

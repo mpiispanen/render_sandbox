@@ -139,7 +139,7 @@ impl Renderer {
         // Initialize all render passes with GPU resources
         let device = self.graphics_api.device();
         self.render_graph
-            .initialize_passes(device, &self.resource_manager)?;
+            .initialize_passes(device, &mut self.resource_manager)?;
 
         log::debug!("Default render graph setup complete");
         Ok(())
