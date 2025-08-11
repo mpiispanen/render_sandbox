@@ -1,12 +1,12 @@
 #[cfg(feature = "gpu-tests")]
 use render_sandbox::{
     graphics_api::{GraphicsApi, WgpuGraphicsApi},
-    renderer::Renderer,
-    scene::Scene,
     image_capture::{ImageCapture, ImageFormat},
-    resource_manager::ResourceManager,
-    render_passes::{ForwardRenderPass, PlaceholderPass},
     render_graph::{RenderGraph, ResourceUsage},
+    render_passes::{ForwardRenderPass, PlaceholderPass},
+    renderer::Renderer,
+    resource_manager::ResourceManager,
+    scene::Scene,
 };
 
 // ForwardRenderPass Visual Regression Tests
@@ -16,7 +16,7 @@ use render_sandbox::{
 #[cfg(feature = "gpu-tests")]
 fn test_forward_pass_visual_output() {
     // Test that the ForwardRenderPass generates a valid visual output
-    
+
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
 
@@ -28,23 +28,35 @@ fn test_forward_pass_visual_output() {
             let scene = Scene::new();
 
             // Create image capture for ForwardRenderPass output
-            let mut image_capture = ImageCapture::new(800, 600, wgpu::TextureFormat::Rgba8UnormSrgb);
+            let mut image_capture =
+                ImageCapture::new(800, 600, wgpu::TextureFormat::Rgba8UnormSrgb);
             let mut resource_manager = ResourceManager::new();
-            
+
             let device = renderer.get_device();
-            image_capture.initialize(device, &mut resource_manager).expect("Image capture should initialize");
+            image_capture
+                .initialize(device, &mut resource_manager)
+                .expect("Image capture should initialize");
 
             // Render one frame
             let render_result = renderer.render(&scene);
-            assert!(render_result.is_ok(), "ForwardRenderPass should render successfully");
+            assert!(
+                render_result.is_ok(),
+                "ForwardRenderPass should render successfully"
+            );
 
             // Verify render stats show pass execution
             let stats = renderer.get_stats();
             assert!(stats.frame_count > 0, "Frame count should be incremented");
-            assert!(stats.render_passes > 0, "Should have executed render passes");
+            assert!(
+                stats.render_passes > 0,
+                "Should have executed render passes"
+            );
 
-            log::info!("ForwardRenderPass visual output test passed - {} frames, {} passes", 
-                      stats.frame_count, stats.render_passes);
+            log::info!(
+                "ForwardRenderPass visual output test passed - {} frames, {} passes",
+                stats.frame_count,
+                stats.render_passes
+            );
         }
         Err(e) => {
             log::info!("Graphics API initialization failed (expected in CI): {e}");
@@ -56,7 +68,7 @@ fn test_forward_pass_visual_output() {
 #[cfg(feature = "gpu-tests")]
 fn test_forward_pass_image_generation() {
     // Test that ForwardRenderPass can generate images for visual regression testing
-    
+
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let test_result = runtime.block_on(async {
         let graphics_api = WgpuGraphicsApi::new(None).await?;
@@ -64,11 +76,11 @@ fn test_forward_pass_image_generation() {
         renderer.initialize()?;
 
         let scene = Scene::new();
-        
+
         // Setup image capture specifically for ForwardRenderPass testing
         let mut image_capture = ImageCapture::new(800, 600, wgpu::TextureFormat::Rgba8UnormSrgb);
         let mut resource_manager = ResourceManager::new();
-        
+
         let device = renderer.get_device();
         image_capture.initialize(device, &mut resource_manager)?;
 
@@ -79,7 +91,7 @@ fn test_forward_pass_image_generation() {
         // 1. Capture the render target texture after ForwardRenderPass execution
         // 2. Save it to outputs/ directory for visual comparison
         // 3. Verify the image content matches expected output
-        
+
         Ok(())
     });
 
@@ -97,24 +109,31 @@ fn test_forward_pass_image_generation() {
 #[cfg(feature = "gpu-tests")]
 fn test_forward_pass_pipeline_abstraction() {
     // Test that ForwardRenderPass correctly uses the pipeline abstraction system
-    
+
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
             let mut renderer = Renderer::new(Box::new(graphics_api));
-            
+
             // Initialization should create ForwardRenderPass with pipeline abstraction
-            renderer.initialize().expect("Renderer should initialize with ForwardRenderPass");
+            renderer
+                .initialize()
+                .expect("Renderer should initialize with ForwardRenderPass");
 
             // Verify the render graph contains ForwardPass
             let render_graph = renderer.render_graph();
-            assert!(render_graph.is_compiled(), "Render graph should be compiled");
-            
-            let execution_order = render_graph.execution_order().expect("Should have execution order");
+            assert!(
+                render_graph.is_compiled(),
+                "Render graph should be compiled"
+            );
+
+            let execution_order = render_graph
+                .execution_order()
+                .expect("Should have execution order");
             let pass_names: Vec<String> = execution_order.iter().map(|p| p.to_string()).collect();
-            
+
             assert!(
                 pass_names.iter().any(|name| name == "ForwardPass"),
                 "Should have ForwardPass using pipeline abstraction, found: {pass_names:?}"
@@ -135,7 +154,7 @@ fn test_forward_pass_pipeline_abstraction() {
 #[cfg(feature = "gpu-tests")]
 fn test_forward_pass_individual_execution() {
     // Test ForwardRenderPass in isolation
-    
+
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
 
@@ -144,20 +163,17 @@ fn test_forward_pass_individual_execution() {
             // Create a minimal render graph with just ForwardRenderPass
             let mut render_graph = RenderGraph::new();
             let mut resource_manager = ResourceManager::new();
-            
+
             let device = graphics_api.device();
             let surface_format = graphics_api.surface_format();
-            
+
             // Add required resources
             let (width, height) = graphics_api.surface_size();
             render_graph.add_resource(
                 "BackBuffer",
                 wgpu::TextureUsage::RENDER_ATTACHMENT | wgpu::TextureUsage::COPY_SRC,
             );
-            render_graph.add_resource(
-                "DepthBuffer", 
-                wgpu::TextureUsage::RENDER_ATTACHMENT,
-            );
+            render_graph.add_resource("DepthBuffer", wgpu::TextureUsage::RENDER_ATTACHMENT);
 
             // Add ForwardRenderPass
             let forward_pass = ForwardRenderPass::new("ForwardPassTest")
@@ -166,18 +182,24 @@ fn test_forward_pass_individual_execution() {
                 .with_clear_color([0.1, 0.2, 0.3, 1.0])
                 .with_resolution(width, height)
                 .with_surface_format(surface_format);
-            
+
             render_graph.add_pass(Box::new(forward_pass));
-            
+
             // Compile the graph
-            render_graph.compile(device, &mut resource_manager).expect("Graph should compile");
-            
+            render_graph
+                .compile(device, &mut resource_manager)
+                .expect("Graph should compile");
+
             // Execute the graph
             let scene = Scene::new();
-            let result = render_graph.execute(device, graphics_api.queue(), &resource_manager, &scene);
-            
-            assert!(result.is_ok(), "ForwardRenderPass should execute successfully in isolation");
-            
+            let result =
+                render_graph.execute(device, graphics_api.queue(), &resource_manager, &scene);
+
+            assert!(
+                result.is_ok(),
+                "ForwardRenderPass should execute successfully in isolation"
+            );
+
             log::info!("ForwardRenderPass individual execution test passed");
         }
         Err(e) => {
@@ -190,7 +212,7 @@ fn test_forward_pass_individual_execution() {
 #[cfg(feature = "gpu-tests")]
 fn test_placeholder_pass_execution() {
     // Test PlaceholderPass execution
-    
+
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
 
@@ -198,29 +220,32 @@ fn test_placeholder_pass_execution() {
         Ok(graphics_api) => {
             let mut render_graph = RenderGraph::new();
             let mut resource_manager = ResourceManager::new();
-            
+
             let device = graphics_api.device();
-            
+
             // Add a resource
-            render_graph.add_resource(
-                "TestBuffer",
-                wgpu::TextureUsage::RENDER_ATTACHMENT,
-            );
+            render_graph.add_resource("TestBuffer", wgpu::TextureUsage::RENDER_ATTACHMENT);
 
             // Add PlaceholderPass
             let placeholder_pass = PlaceholderPass::new("PlaceholderTest")
                 .with_resource("TestBuffer", ResourceUsage::Write);
-            
+
             render_graph.add_pass(Box::new(placeholder_pass));
-            
+
             // Compile and execute
-            render_graph.compile(device, &mut resource_manager).expect("Graph should compile");
-            
+            render_graph
+                .compile(device, &mut resource_manager)
+                .expect("Graph should compile");
+
             let scene = Scene::new();
-            let result = render_graph.execute(device, graphics_api.queue(), &resource_manager, &scene);
-            
-            assert!(result.is_ok(), "PlaceholderPass should execute successfully");
-            
+            let result =
+                render_graph.execute(device, graphics_api.queue(), &resource_manager, &scene);
+
+            assert!(
+                result.is_ok(),
+                "PlaceholderPass should execute successfully"
+            );
+
             log::info!("PlaceholderPass execution test passed");
         }
         Err(e) => {
@@ -233,7 +258,7 @@ fn test_placeholder_pass_execution() {
 #[cfg(feature = "gpu-tests")]
 fn test_render_pass_ordering() {
     // Test that render passes execute in the correct order
-    
+
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
 
@@ -241,12 +266,14 @@ fn test_render_pass_ordering() {
         Ok(graphics_api) => {
             let mut renderer = Renderer::new(Box::new(graphics_api));
             renderer.initialize().expect("Renderer should initialize");
-            
+
             // Verify execution order includes both ClearPass and ForwardPass
             let render_graph = renderer.render_graph();
-            let execution_order = render_graph.execution_order().expect("Should have execution order");
+            let execution_order = render_graph
+                .execution_order()
+                .expect("Should have execution order");
             let pass_names: Vec<String> = execution_order.iter().map(|p| p.to_string()).collect();
-            
+
             // Should have at least ClearPass and ForwardPass
             assert!(pass_names.len() >= 2, "Should have multiple render passes");
             assert!(
@@ -257,15 +284,18 @@ fn test_render_pass_ordering() {
                 pass_names.iter().any(|name| name == "ForwardPass"),
                 "Should have ForwardPass"
             );
-            
+
             // ClearPass should come before ForwardPass
             let clear_index = pass_names.iter().position(|name| name == "ClearPass");
             let forward_index = pass_names.iter().position(|name| name == "ForwardPass");
-            
+
             if let (Some(clear_idx), Some(forward_idx)) = (clear_index, forward_index) {
-                assert!(clear_idx < forward_idx, "ClearPass should execute before ForwardPass");
+                assert!(
+                    clear_idx < forward_idx,
+                    "ClearPass should execute before ForwardPass"
+                );
             }
-            
+
             log::info!("Render pass ordering test passed - execution order: {pass_names:?}");
         }
         Err(e) => {

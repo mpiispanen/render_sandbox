@@ -59,7 +59,7 @@ const TEST_CASES: &[TestCase] = &[
         description: "Basic rendering test at 800x600 resolution",
     },
     TestCase {
-        name: "high_res_1920x1080", 
+        name: "high_res_1920x1080",
         width: 1920,
         height: 1080,
         samples: 1,
@@ -218,19 +218,19 @@ fn generate_visual_regression_images() {
     if let Ok(entries) = fs::read_dir("outputs") {
         println!("\nGenerated test images for render pass validation:");
         let mut forward_pass_images = 0;
-        
+
         for entry in entries.flatten() {
             if let Some(extension) = entry.path().extension() {
                 if extension == "png" {
                     if let Ok(metadata) = entry.metadata() {
                         let filename = entry.file_name().to_string_lossy();
                         println!("  - {} ({} bytes)", filename, metadata.len());
-                        
+
                         // Count ForwardRenderPass specific images
                         if filename.starts_with("forward_pass_") {
                             forward_pass_images += 1;
                         }
-                        
+
                         // Validate image size is reasonable (not empty/corrupted)
                         if metadata.len() < 1000 {
                             panic!("Generated image {} is too small ({} bytes), indicating render failure", 
@@ -240,13 +240,18 @@ fn generate_visual_regression_images() {
                 }
             }
         }
-        
+
         // Ensure we have ForwardRenderPass specific test images
-        assert!(forward_pass_images >= 5, 
-               "Should have at least 5 ForwardRenderPass specific test images, found {}", 
-               forward_pass_images);
-        
-        println!("\n✅ Generated {} ForwardRenderPass specific test images", forward_pass_images);
+        assert!(
+            forward_pass_images >= 5,
+            "Should have at least 5 ForwardRenderPass specific test images, found {}",
+            forward_pass_images
+        );
+
+        println!(
+            "\n✅ Generated {} ForwardRenderPass specific test images",
+            forward_pass_images
+        );
         println!("✅ All render pass visual regression tests completed successfully");
     }
 }
