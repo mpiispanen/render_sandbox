@@ -63,7 +63,7 @@ impl Engine for PlaceholderEngine {
     async fn new(window_handle: Option<&Window>, args: &Args) -> Result<Self, EngineError> {
         log::info!(
             "Creating placeholder engine (headless: {})",
-            _window_handle.is_none()
+            window_handle.is_none()
         );
         Ok(PlaceholderEngine {
             frame_count: 0,
@@ -128,8 +128,8 @@ impl RealTimeEngine {
         log::info!(
             "Creating real-time engine (headless: {}, {}x{})",
             window_handle.is_none(),
-            width,
-            height
+            args.width,
+            args.height
         );
 
         // Initialize graphics API with the specified resolution
@@ -149,7 +149,7 @@ impl RealTimeEngine {
 
         // Set renderer size for headless mode
         if window_handle.is_none() {
-            if let Err(e) = renderer.resize(width, height) {
+            if let Err(e) = renderer.resize(args.width, args.height) {
                 log::error!("Failed to resize renderer for headless mode: {e}");
             }
         }
@@ -191,8 +191,8 @@ impl RealTimeEngine {
             scene,
             is_headless: window_handle.is_none(),
             frame_count: 0,
-            width,
-            height,
+            width: args.width,
+            height: args.height,
         })
     }
 }

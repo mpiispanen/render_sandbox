@@ -60,25 +60,10 @@ impl Application {
         info!("Initializing engine");
 
         let engine = if self.args.headless {
-            Box::new(
-                RealTimeEngine::new(
-                    None,
-                    &self.args.gltf_path,
-                    self.args.width,
-                    self.args.height,
-                )
-                .await?,
-            ) as Box<dyn Engine>
+            Box::new(RealTimeEngine::new(None, &self.args).await?) as Box<dyn Engine>
         } else {
-            Box::new(
-                RealTimeEngine::new(
-                    self.window.as_ref(),
-                    &self.args.gltf_path,
-                    self.args.width,
-                    self.args.height,
-                )
-                .await?,
-            ) as Box<dyn Engine>
+            Box::new(RealTimeEngine::new(self.window.as_ref(), &self.args).await?)
+                as Box<dyn Engine>
         };
 
         self.engine = Some(engine);
