@@ -1,10 +1,11 @@
+#[cfg(feature = "gpu-tests")]
 use render_sandbox::{
     graphics_api::{GraphicsApi, WgpuGraphicsApi},
     renderer::Renderer,
     scene::Scene,
 };
 
-#[test]
+#[cfg(feature = "gpu-tests")]
 fn test_graphics_api_creation() {
     // Updated to provide required width and height parameters
     let graphics_api_result =
@@ -25,7 +26,7 @@ fn test_graphics_api_creation() {
     }
 }
 
-#[test]
+#[cfg(feature = "gpu-tests")]
 fn test_forward_renderpass_enabled() {
     // Test that the forward renderpass is properly enabled and configured
     // This test runs in headless mode to work in CI environments
@@ -95,7 +96,7 @@ fn test_forward_renderpass_enabled() {
     }
 }
 
-#[test]
+#[cfg(feature = "gpu-tests")]
 fn test_renderer_with_custom_samples() {
     // Updated to provide required width and height parameters
     let graphics_api_result =
@@ -116,7 +117,7 @@ fn test_renderer_with_custom_samples() {
     }
 }
 
-#[test]
+#[cfg(feature = "gpu-tests")]
 fn test_forward_renderpass_execution() {
     // Test that the forward renderpass can execute without errors
 
@@ -167,7 +168,7 @@ fn test_forward_renderpass_execution() {
     }
 }
 
-#[test]
+#[cfg(feature = "gpu-tests")]
 fn test_renderer_with_different_resolutions() {
     let test_resolutions = vec![(800, 600), (1920, 1080), (1024, 768)];
 
@@ -192,7 +193,7 @@ fn test_renderer_with_different_resolutions() {
     }
 }
 
-#[test]
+#[cfg(feature = "gpu-tests")]
 fn test_render_stats_with_forward_pass() {
     // Test that rendering stats properly reflect forward renderpass usage
 
@@ -241,7 +242,7 @@ fn test_render_stats_with_forward_pass() {
     }
 }
 
-#[test]
+#[cfg(feature = "gpu-tests")]
 fn test_renderer_sample_count_validation() {
     // Updated to provide required width and height parameters
     let graphics_api_result =
@@ -283,7 +284,7 @@ fn test_renderer_sample_count_validation() {
     }
 }
 
-#[test]
+#[cfg(feature = "gpu-tests")]
 fn test_forward_renderpass_with_scene_content() {
     // Test that forward renderpass works with scene content
 

@@ -19,7 +19,6 @@ pub struct Application {
 
 impl Application {
     /// Creates a new Application instance
-    /// `args`: Command line arguments containing all configuration
     pub fn new(args: Args) -> Result<Self, EngineError> {
         info!("Creating application (headless: {})", args.headless);
 
@@ -61,10 +60,25 @@ impl Application {
         info!("Initializing engine");
 
         let engine = if self.args.headless {
-            Box::new(RealTimeEngine::new(None, &self.args).await?) as Box<dyn Engine>
+            Box::new(
+                RealTimeEngine::new(
+                    None,
+                    &self.args.gltf_path,
+                    self.args.width,
+                    self.args.height,
+                )
+                .await?,
+            ) as Box<dyn Engine>
         } else {
-            Box::new(RealTimeEngine::new(self.window.as_ref(), &self.args).await?)
-                as Box<dyn Engine>
+            Box::new(
+                RealTimeEngine::new(
+                    self.window.as_ref(),
+                    &self.args.gltf_path,
+                    self.args.width,
+                    self.args.height,
+                )
+                .await?,
+            ) as Box<dyn Engine>
         };
 
         self.engine = Some(engine);
@@ -80,10 +94,7 @@ impl Application {
 
         if self.args.headless {
             info!("Starting headless mode");
-            let frame_data = self.run_headless(Some(10))?; // Render 10 frames by default
-            if let Some(data) = frame_data {
-                info!("Rendered frame data: {} bytes", data.len());
-            }
+            self.run_headless()?;
             Ok(())
         } else {
             info!("Starting windowed mode");
@@ -180,15 +191,15 @@ impl Application {
         });
     }
 
-    /// Runs the application in headless mode for a fixed number of frames
-    /// Returns the last rendered frame's data if available
-    fn run_headless(mut self, max_frames: Option<u32>) -> Result<Option<Vec<u8>>, EngineError> {
+    /// Runs the application in headless mode and saves the rendered image
+    fn run_headless(mut self) -> Result<(), EngineError> {
         debug!("Starting headless loop");
 
-        let max_frames = max_frames.unwrap_or(100);
+        // Render a few frames to ensure everything is properly initialized
+        let warmup_frames = 5;
         let mut frame_count = 0;
 
-        while frame_count < max_frames && !self.should_exit {
+        while frame_count < warmup_frames {
             // Update engine
             if let Some(engine) = &mut self.engine {
                 engine.update();
@@ -200,21 +211,56 @@ impl Application {
             }
 
             frame_count += 1;
-
-            // Simple exit condition for demo purposes
-            if frame_count >= max_frames {
-                self.should_exit = true;
-            }
         }
 
-        info!("Completed {frame_count} frames in headless mode");
+        info!("Completed {frame_count} warmup frames in headless mode");
 
-        // Return the last rendered frame data
+        // Get the final rendered frame data and save it
         if let Some(engine) = &self.engine {
-            Ok(engine.get_rendered_frame_data())
+            if let Some(frame_data) = engine.get_rendered_frame_data() {
+                info!("Rendered frame data: {} bytes", frame_data.len());
+                self.save_image_data(&frame_data)?;
+            } else {
+                return Err(EngineError::RenderingError(
+                    "No frame data available from engine".to_string(),
+                ));
+            }
         } else {
-            Ok(None)
+            return Err(EngineError::RenderingError(
+                "Engine not available".to_string(),
+            ));
         }
+
+        Ok(())
+    }
+
+    /// Save frame data as an image file
+    fn save_image_data(&self, data: &[u8]) -> Result<(), EngineError> {
+        info!("Saving image to: {}", self.args.output);
+
+        // Convert RGBA data to image format
+        let img = image::RgbaImage::from_raw(self.args.width, self.args.height, data.to_vec())
+            .ok_or_else(|| {
+                EngineError::RenderingError("Failed to create image from frame data".to_string())
+            })?;
+
+        // Determine format based on file extension or args.format
+        let format = match self.args.format.to_lowercase().as_str() {
+            "png" => image::ImageFormat::Png,
+            "jpg" | "jpeg" => image::ImageFormat::Jpeg,
+            "bmp" => image::ImageFormat::Bmp,
+            _ => {
+                warn!("Unknown format '{}', defaulting to PNG", self.args.format);
+                image::ImageFormat::Png
+            }
+        };
+
+        // Save the image
+        img.save_with_format(&self.args.output, format)
+            .map_err(|e| EngineError::RenderingError(format!("Failed to save image: {e}")))?;
+
+        info!("Successfully saved image: {}", self.args.output);
+        Ok(())
     }
 
     /// Returns whether the application is in headless mode

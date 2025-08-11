@@ -3,17 +3,18 @@ use render_sandbox::{app_core::Application, engine::EngineError, Args};
 
 #[test]
 fn test_application_headless_mode() {
-    // Test that we can create an application in headless mode with custom arguments
-    let args = Args::parse_from([
-        "render_sandbox",
-        "--headless",
-        "--width",
-        "1024",
-        "--height",
-        "768",
-        "--samples",
-        "4",
-    ]);
+    // Test that we can create an application in headless mode
+    let args = Args {
+        width: 800,
+        height: 600,
+        output: "test_output.png".to_string(),
+        format: "png".to_string(),
+        samples: 1,
+        verbose: false,
+        log_level: "info".to_string(),
+        headless: true,
+        gltf_path: "test_assets/triangle.gltf".to_string(),
+    };
     let app = Application::new(args);
     assert!(app.is_ok(), "Failed to create headless application");
 
@@ -143,11 +144,20 @@ fn test_sample_count_validation_behavior() {
 #[test]
 #[ignore] // Skip by default in CI - run with: cargo test -- --ignored
 fn test_application_windowed_mode() {
-    // Test that we can create an application in windowed mode with custom resolution
-    let args = Args::parse_from(["render_sandbox", "--width", "800", "--height", "600"]);
-
-    // Use panic::catch_unwind to handle the expected threading panic in test environments
-    let result = std::panic::catch_unwind(|| Application::new(args));
+    let result = std::panic::catch_unwind(|| {
+        let args = Args {
+            width: 800,
+            height: 600,
+            output: "test_output.png".to_string(),
+            format: "png".to_string(),
+            samples: 1,
+            verbose: false,
+            log_level: "info".to_string(),
+            headless: false,
+            gltf_path: "test_assets/triangle.gltf".to_string(),
+        };
+        Application::new(args)
+    });
 
     match result {
         Ok(Ok(application)) => {
@@ -200,9 +210,18 @@ fn test_application_windowed_mode() {
 
 #[test]
 fn test_headless_run() {
-    // Test running the application in headless mode with custom settings
-    let args = Args::parse_from(["render_sandbox", "--headless", "--samples", "4"]);
-
+    // Test running the application in headless mode
+    let args = Args {
+        width: 800,
+        height: 600,
+        output: "test_output.png".to_string(),
+        format: "png".to_string(),
+        samples: 1,
+        verbose: false,
+        log_level: "info".to_string(),
+        headless: true,
+        gltf_path: "test_assets/triangle.gltf".to_string(),
+    };
     if let Ok(app) = Application::new(args) {
         let result = app.run();
 
