@@ -88,7 +88,8 @@ fn test_pipeline_builder_creation() {
 fn test_graphics_pipeline_creation_with_device() {
     // This test requires a valid device and is more of an integration test
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
@@ -148,7 +149,8 @@ fn test_graphics_pipeline_creation_with_device() {
 #[test]
 fn test_pipeline_error_handling() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
@@ -184,7 +186,8 @@ fn test_pipeline_error_handling() {
 #[test]
 fn test_default_shaders_creation() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {

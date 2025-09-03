@@ -18,7 +18,8 @@ fn test_forward_pass_visual_output() {
     // Test that the ForwardRenderPass generates a valid visual output
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
@@ -71,7 +72,7 @@ fn test_forward_pass_image_generation() {
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let test_result = runtime.block_on(async {
-        let graphics_api = WgpuGraphicsApi::new(None).await?;
+        let graphics_api = WgpuGraphicsApi::new(None, 800, 600).await?;
         let mut renderer = Renderer::new(Box::new(graphics_api));
         renderer.initialize()?;
 
@@ -111,7 +112,8 @@ fn test_forward_pass_pipeline_abstraction() {
     // Test that ForwardRenderPass correctly uses the pipeline abstraction system
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
@@ -156,7 +158,8 @@ fn test_forward_pass_individual_execution() {
     // Test ForwardRenderPass in isolation
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
@@ -214,7 +217,8 @@ fn test_placeholder_pass_execution() {
     // Test PlaceholderPass execution
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {
@@ -260,7 +264,8 @@ fn test_render_pass_ordering() {
     // Test that render passes execute in the correct order
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let graphics_api_result = runtime.block_on(async { WgpuGraphicsApi::new(None).await });
+    let graphics_api_result =
+        runtime.block_on(async { WgpuGraphicsApi::new(None, 800, 600).await });
 
     match graphics_api_result {
         Ok(graphics_api) => {

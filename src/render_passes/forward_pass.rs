@@ -8,8 +8,7 @@ use crate::resource_manager::ResourceManager;
 /// This function shows the intended usage pattern that would be used once
 /// the RenderPass trait interface supports mutable ResourceManager.
 #[allow(dead_code)]
-fn 
-(
+fn example_pipeline_creation_with_registry(
     device: &wgpu::Device,
     resource_manager: &mut ResourceManager,
     surface_format: wgpu::TextureFormat,

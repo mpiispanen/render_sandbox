@@ -8,7 +8,7 @@ use std::str::FromStr;
 #[tokio::test]
 async fn test_image_capture_integration() {
     // Test image capture functionality with a real GPU device
-    let graphics_api_result = WgpuGraphicsApi::new(None).await;
+    let graphics_api_result = WgpuGraphicsApi::new(None, 800, 600).await;
 
     match graphics_api_result {
         Ok(graphics_api) => {
