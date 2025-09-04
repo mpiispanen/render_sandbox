@@ -223,7 +223,7 @@ fn generate_visual_regression_images() {
             if let Some(extension) = entry.path().extension() {
                 if extension == "png" {
                     if let Ok(metadata) = entry.metadata() {
-                        let filename = entry.file_name().to_string_lossy();
+                        let filename = entry.file_name().to_string_lossy().to_string();
                         println!("  - {} ({} bytes)", filename, metadata.len());
 
                         // Count ForwardRenderPass specific images
