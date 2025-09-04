@@ -90,7 +90,7 @@ pub trait RenderPass: Send + Sync {
     fn initialize(
         &mut self,
         device: &wgpu::Device,
-        resource_manager: &ResourceManager,
+        resource_manager: &mut ResourceManager,
     ) -> Result<(), RenderGraphError>;
 
     /// Execute the render pass
@@ -171,7 +171,7 @@ impl RenderGraph {
     pub fn initialize_passes(
         &mut self,
         device: &wgpu::Device,
-        resource_manager: &ResourceManager,
+        resource_manager: &mut ResourceManager,
     ) -> Result<(), RenderGraphError> {
         log::debug!("Initializing all render passes");
 
